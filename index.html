@@ -445,6 +445,9 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 @media(max-width:768px){
   nav{padding:0 12px;}
   .nav-inner{height:64px;}
+  .nav-inner{height:auto;flex-wrap:wrap;padding:8px 0;}
+  .search-wrap{display:flex;width:100%;margin:4px 0 8px;order:99;flex:0 0 100%;}
+  .search-input{width:100%;}
   .nav-logo img{height:56px;width:56px;}
   .hero{grid-template-columns:1fr;padding:48px 20px 40px;min-height:auto;gap:32px;}
   .hero-visual{display:flex;width:100%;order:-1;}
@@ -4221,18 +4224,18 @@ function submitOrder() {
   // Telegram — use no-cors GET request to avoid CORS block
   // Encode message as URL param so no preflight is needed
   const tgMsg = encodeURIComponent(
-    '🔔 NEW ORDER — Jeswika Jewels\n\n'
-    + '📋 Order: #' + orderId + '\n'
-    + '🕐 Time: ' + now + '\n\n'
-    + '🛍️ Product: ' + currentProduct + '\n'
-    + '💰 Price: ' + currentPrice + '\n'
-    + '🚚 Shipping: ' + (currentShipping === 0 ? 'FREE' : '₹' + currentShipping) + '\n'
-    + '💳 Total Paid: ₹' + total + '\n'
-    + '📌 Payment ID: ' + utr + '\n\n'
-    + '👤 Customer\n'
-    + '• Name: ' + name + '\n'
-    + '• Phone: ' + phone + '\n'
-    + '• Address: ' + address + ', ' + city + ' - ' + pin
+    '\uD83D\uDD14 NEW ORDER \u2014 Jeswika Jewels\n\n'
+    + '\uD83D\uDCCB Order: #' + orderId + '\n'
+    + '\uD83D\uDD50 Time: ' + now + '\n\n'
+    + '\uD83D\uDED2 Product: ' + currentProduct + '\n'
+    + '\uD83D\uDCB0 Price: ' + currentPrice + '\n'
+    + '\uD83D\uDE9A Shipping: ' + (currentShipping === 0 ? 'FREE' : '\u20B9' + currentShipping) + '\n'
+    + '\uD83D\uDCB3 Total Paid: \u20B9' + total + '\n'
+    + '\uD83D\uDCCC Payment ID: ' + utr + '\n\n'
+    + '\uD83D\uDC64 Customer\n'
+    + '\u2022 Name: ' + name + '\n'
+    + '\u2022 Phone: ' + phone + '\n'
+    + '\u2022 Address: ' + address + ', ' + city + ' - ' + pin
   );
   // Telegram notification — direct API call
   const BOT_TOKEN = '8710053797:AAGrHXUY4RzKq4AWqVcJ_qAbYkEnO1opjUI';
