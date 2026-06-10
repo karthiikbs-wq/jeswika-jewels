@@ -470,7 +470,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .form-row{grid-template-columns:1fr;}
   .admin-stats{grid-template-columns:1fr 1fr;}
   .social-cards{grid-template-columns:1fr;}
-  .search-wrap{display:none;}
+  .search-wrap{display:flex;width:100%;margin:8px 0 4px;}
   .btn-gold.nav-whatsapp{display:none;}
   .cart-icon-wrap{padding:10px 14px;font-size:13px;}
   /* Product grid 2 col on mobile */
@@ -4143,14 +4143,14 @@ function submitOrder() {
   // Owner WhatsApp notification
   const ownerMsg=encodeURIComponent(
     '🔔 *NEW ORDER — Jeswika Jewels*\n\n'+
-    '🆔 Order ID: #'+orderId+'\n'+
+    '📋 Order ID: #'+orderId+'\n'+
     '🕐 Time: '+now+'\n\n'+
-    '🛍 *Product:* '+currentProduct+'\n'+
+    '🛍️ *Product:* '+currentProduct+'\n'+
     '💰 Product Price: '+currentPrice+'\n'+
     '🚚 Shipping: ₹'+currentShipping+'\n'+
     '💳 *Total Paid: ₹'+total+'*\n'+
     '📌 Razorpay Payment ID: '+utr+'\n'+
-    '   Paid to: jeswikajewels@axl\n\n'+
+    '  Paid to: jeswikajewels@axl\n\n'+
     '👤 *Customer Details*\n'+
     '• Name: '+name+'\n'+
     '• Phone: '+phone+'\n'+
@@ -4161,10 +4161,10 @@ function submitOrder() {
 
   // Customer WhatsApp message
   const custMsg=encodeURIComponent(
-    'Hi Jeswika Jewels! 🛍\n\n'+
+    'Hi Jeswika Jewels! 🛍️\n\n'+
     'I have placed an order and made the payment.\n\n'+
-    '🆔 Order ID: #'+orderId+'\n'+
-    '🛍 Product: '+currentProduct+'\n'+
+    '📋 Order ID: #'+orderId+'\n'+
+    '🛍️ Product: '+currentProduct+'\n'+
     '💳 Total Paid: ₹'+total+'\n'+
     '📌 Razorpay Payment ID: '+utr+'\n'+
     '👤 Name: '+name+'\n'+
@@ -4395,8 +4395,8 @@ renderProducts();
   </div>
   <div class="cart-footer" id="cartFooter" style="display:none;">
     <div class="cart-total-row"><span>Total</span><span id="cartTotal">₹0</span></div>
-    <button class="cart-checkout-btn" onclick="checkoutCart()">Proceed to Pay via UPI ➜</button>
-    <p class="cart-note">You can pay for all items together via UPI</p>
+    <button class="cart-checkout-btn" onclick="checkoutCart()">Proceed to Payment ➜</button>
+    <p class="cart-note">Secure payment via Razorpay</p>
   </div>
 </div>
 
