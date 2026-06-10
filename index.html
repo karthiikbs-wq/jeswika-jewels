@@ -2982,7 +2982,7 @@ var qrcode = function() {
   <div class="section-head"><p class="eyebrow">Simple Process</p><h2 class="section-title">How to <em>Order</em></h2><div class="ornament-line"><div class="ornament-line-dot"></div></div></div>
   <div class="how-grid">
     <div class="how-card"><div class="how-num">1</div><h3 class="how-title">Choose Product</h3><p class="how-desc">Click "Buy Now" on any product you like. Fill in your address and payment details.</p></div>
-    <div class="how-card"><div class="how-num">2</div><h3 class="how-title">Pay via UPI</h3><p class="how-desc">Scan our PhonePe QR code and pay the total amount shown including shipping. Save your UTR number.</p></div>
+    <div class="how-card"><div class="how-num">2</div><h3 class="how-title">Complete Payment</h3><p class="how-desc">Pay securely via Razorpay — choose UPI, Card, Netbanking or Wallet. Payment is processed instantly and securely.</p></div>
     <div class="how-card"><div class="how-num">3</div><h3 class="how-title">Confirm on WhatsApp</h3><p class="how-desc">Send your payment screenshot on WhatsApp. Orders are confirmed only after payment is received &amp; verified.</p></div>
   </div>
 </section>
@@ -3002,7 +3002,7 @@ var qrcode = function() {
       <h3>Policy</h3>
       <ul>
         <li>Orders confirmed only after payment is received</li>
-        <li>UPI payments only — No COD</li>
+        <li>Secure online payment via Razorpay — No COD</li>
         <li>Record full unboxing video with timestamp — mandatory in case of any damages</li>
         <li class="warn">Damage claims without an unboxing video will not be accepted</li>
         <li class="warn">Video mandatory for damage claims with timestamp</li>
@@ -3026,12 +3026,11 @@ var qrcode = function() {
       <div class="policy-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B8860B" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
       <h3>Payment</h3>
       <ul>
-        <li>Google Pay, PhonePe, Paytm</li>
-        <li>All UPI apps accepted</li>
+        <li>Pay securely via Razorpay</li>
+        <li>UPI, Cards, Netbanking &amp; Wallets accepted</li>
         <li>No Cash on Delivery (COD)</li>
-        <li>Save payment screenshot</li>
-        <li>Share screenshot on WhatsApp to confirm order</li>
-        <li>Enter UTR/reference number in order form</li>
+        <li>Payment confirmation sent automatically</li>
+        <li>100% secure — your payment details are never shared with us</li>
       </ul>
     </div>
   </div>
@@ -3122,8 +3121,8 @@ var qrcode = function() {
         <div class="order-product"><img id="modal-prod-img" src="" alt=""/><div class="order-product-info"><h4 id="modal-prod-name"></h4><p id="modal-prod-price" style="color:#DC2626;font-size:16px;font-weight:600;"></p></div></div>
         <div class="policy-box"><h4>📋 Order Process</h4>
           <div class="policy-item"><span>✓</span><span>Orders will be confirmed only after payment is received</span></div>
-          <div class="policy-item"><span>✓</span><span>Pay via UPI — scan QR shown in Payment step</span></div>
-          <div class="policy-item"><span>✓</span><span>Share payment screenshot on WhatsApp to confirm</span></div>
+          <div class="policy-item"><span>✓</span><span>Pay securely via Razorpay — UPI, Cards, Netbanking or Wallets</span></div>
+          <div class="policy-item"><span>✓</span><span>Payment confirmation sent automatically after successful payment</span></div>
         </div>
         <div class="policy-box" style="border-left-color:#1D4ED8;background:#EFF6FF;">
           <h4 style="color:#1D4ED8;">🚚 Shipping Charges</h4>
@@ -3361,7 +3360,7 @@ function renderProducts() {
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
         <button class="prod-buy" data-pid="${p.id}" onclick="event.stopPropagation();if(this.dataset.pid&&this.getAttribute('data-avail')!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
-          ${p.available===false?'Sold Out':'Buy Now — Pay via UPI'}
+          ${p.available===false?'Sold Out':'Buy Now'}
         </button>
       </div>
     </div>`;
@@ -4234,12 +4233,14 @@ function submitOrder() {
     + '• Phone: ' + phone + '\n'
     + '• Address: ' + address + ', ' + city + ' - ' + pin
   );
-  // Telegram notification via secure proxy (token hidden server-side)
-  fetch('https://jeswikajewels.netlify.app/.netlify/functions/notify', {
+  // Telegram notification — direct API call
+  const BOT_TOKEN = '8710053797:AAGrHXUY4RzKq4AWqVcJ_qAbYkEnO1opjUI';
+  const CHAT_ID = '8635022772';
+  fetch('https://api.telegram.org/bot' + BOT_TOKEN + '/sendMessage', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ message: decodeURIComponent(tgMsg) })
-  }).catch(function(e){ console.warn('Notification error:', e); });
+    body: JSON.stringify({ chat_id: CHAT_ID, text: decodeURIComponent(tgMsg), parse_mode: 'HTML' })
+  }).catch(function(e){ console.warn('Telegram error:', e); });
 
 
   // Set customer confirm link
