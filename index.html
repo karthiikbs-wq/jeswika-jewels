@@ -33,12 +33,69 @@
     collection, doc, setDoc, getDocs,
     deleteDoc, updateDoc, query, orderBy
   };
+  window._fbReady = true;
+
+  // ── Firestore product helpers ──
+  // Load products from Firestore (called on page load)
+  async function loadProductsFromFirestore() {
+    try {
+      const snap = await getDocs(query(collection(db, 'products'), orderBy('id')));
+      if (!snap.empty) {
+        const prods = snap.docs.map(d => d.data());
+        localStorage.setItem('jj_products', JSON.stringify(prods));
+        return prods;
+      }
+    } catch(e) { console.warn('Firestore load failed:', e); }
+    return null;
+  }
+
+  // Save a product to Firestore
+  async function saveProductToFirestore(product) {
+    try {
+      await setDoc(doc(db, 'products', String(product.id)), product);
+    } catch(e) { console.warn('Firestore save failed:', e); }
+  }
+
+  // Delete a product from Firestore
+  async function deleteProductFromFirestore(id) {
+    try {
+      await deleteDoc(doc(db, 'products', String(id)));
+    } catch(e) { console.warn('Firestore delete failed:', e); }
+  }
+
+  // Save entire products array to Firestore
+  async function saveAllProductsToFirestore(products) {
+    for (const p of products) {
+      await saveProductToFirestore(p);
+    }
+  }
+
+  window._fbProductFn = {
+    loadProductsFromFirestore,
+    saveProductToFirestore,
+    deleteProductFromFirestore,
+    saveAllProductsToFirestore
+  };
+
+  // Auto-load products from Firestore on startup
+  loadProductsFromFirestore().then(prods => {
+    if (prods) {
+      if (typeof renderProducts === 'function') renderProducts();
+      if (typeof updateStats === 'function') updateStats();
+      if (typeof renderAdminTable === 'function') {
+        var adminPanel = document.getElementById('admin-panel');
+        if (adminPanel && adminPanel.classList.contains('active')) renderAdminTable();
+      }
+    }
+  });
+
+  // Dispatch event so doLogin() knows Firebase is ready
+  window.dispatchEvent(new Event('firebaseReady'));
 
   // Watch auth state
   onAuthStateChanged(auth, (user) => {
     window._fbUser = user;
     if(user) {
-      // User is signed in - show admin panel
       var loginEl = document.getElementById('admin-login');
       var panelEl = document.getElementById('admin-panel');
       if(loginEl) loginEl.classList.remove('active');
@@ -581,6 +638,11 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .cart-checkout-btn{width:100%;background:var(--gold);color:white;border:none;padding:16px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .2s;min-height:52px;}
 .cart-checkout-btn:hover{background:var(--gold-dark);}
 .cart-note{font-size:11px;color:var(--text-light);text-align:center;margin-top:10px;}
+
+/* ── Cart Add Toast ── */
+#cart-add-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:13px 22px;border-radius:40px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.5px;display:flex;align-items:center;gap:12px;z-index:9990;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.35);}
+#cart-add-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+#cart-add-toast .toast-cart-btn{background:var(--gold);color:white;border:none;padding:6px 14px;border-radius:20px;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;}
 
 </style>
 
@@ -3056,6 +3118,17 @@ var qrcode = function() {
     <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-text">"Ordered a choker set and it was stunning. Got so many compliments! Great quality at this price."</p><div class="testi-name">Deepa R. — Bangalore</div></div>
     <div class="testi-card"><div class="testi-stars">★★★★★</div><p class="testi-text">"UPI payment was so easy and the necklace arrived in 3 days. Gorgeous piece! Highly recommend."</p><div class="testi-name">Anitha K. — Hyderabad</div></div>
   </div>
+  <!-- Social proof CTA -->
+  <div style="text-align:center;margin-top:48px;padding:32px;border:1px dashed var(--gold-border);border-radius:4px;max-width:540px;margin-left:auto;margin-right:auto;">
+    <div style="font-size:28px;margin-bottom:10px;">📸</div>
+    <p style="font-family:'Playfair Display',serif;font-size:18px;color:var(--dark);margin-bottom:8px;">Wearing Jeswika Jewels?</p>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:18px;line-height:1.6;">Tag us on Instagram <strong>@jeswika._jewels</strong> and get featured on our page! Share your look and inspire others. ✨</p>
+    <a href="https://www.instagram.com/jeswika._jewels" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);color:white;padding:12px 24px;border-radius:30px;text-decoration:none;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" stroke-linecap="round"/></svg>
+      Follow &amp; Tag Us
+    </a>
+    <p style="font-size:11px;color:var(--text-light);margin-top:14px;">📦 Ordered recently? We'd love your review on WhatsApp too!</p>
+  </div>
 </section>
 
 <section class="social-section" id="follow">
@@ -3098,7 +3171,7 @@ var qrcode = function() {
         <a href="mailto:jeswika.jewels@gmail.com" title="Email"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></a>
       </div>
     </div>
-    <div><div class="footer-col-title">Shop</div><ul class="footer-links"><li><a href="#shop">All Products</a></li><li><a href="#shop">Necklace</a></li><li><a href="#shop">Pearl Haram</a></li><li><a href="#shop">Choker</a></li><li><a href="#shop">Kaasu Mala</a></li><li><a href="#shop">Bridal Collections</a></li></ul></div>
+    <div><div class="footer-col-title">Shop</div><ul class="footer-links"><li><a href="#shop" onclick="filterFromMenu('All')">All Products</a></li><li><a href="#shop" onclick="filterFromMenu('Necklace')">Necklace</a></li><li><a href="#shop" onclick="filterFromMenu('Pearl Haram')">Pearl Haram</a></li><li><a href="#shop" onclick="filterFromMenu('Choker')">Choker</a></li><li><a href="#shop" onclick="filterFromMenu('Kaasu Mala')">Kaasu Mala</a></li><li><a href="#shop" onclick="filterFromMenu('American Diamonds')">American Diamonds</a></li></ul></div>
     <div><div class="footer-col-title">Info</div><ul class="footer-links"><li><a href="#how-to-order">How to Order</a></li><li><a href="#policy">Policy</a></li><li><a href="#policy">Address Details</a></li><li><a href="#policy">Payment Info</a></li></ul></div>
     <div><div class="footer-col-title">Contact</div>
       <div class="footer-contact-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.45 2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.37a16 16 0 0 0 6.29 6.29l.93-.93a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>9482393897</div>
@@ -3242,7 +3315,7 @@ var qrcode = function() {
     <div class="login-sub">Sign in with your Firebase account</div>
     <div class="login-error" id="login-error">❌ Incorrect email or password. Please try again.</div>
     <div class="login-form-group"><label>Email</label><input type="email" id="admin-email" placeholder="Enter admin email"/></div>
-    <div class="login-form-group"><label>Password</label><input type="password" id="admin-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="login-form-group"><label>Password</label><div style="position:relative;"><input type="password" id="admin-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding-right:44px;box-sizing:border-box;"/><button type="button" onclick="var i=document.getElementById('admin-password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':' 🙈'" style="position:absolute;right:0;top:0;height:100%;width:42px;background:none;border:none;cursor:pointer;font-size:16px;color:#888;padding:0;">👁</button></div></div>
     <button class="btn-gold" id="admin-login-btn" style="width:100%;padding:14px;font-size:13px;letter-spacing:3px;" onclick="doLogin()">Login to Admin Panel</button>
     <div style="margin-top:14px;"><button onclick="hideAdminLogin()" style="background:none;border:none;color:var(--text-light);font-size:12px;cursor:pointer;">← Back to Website</button></div>
   </div>
@@ -3311,13 +3384,33 @@ const DEFAULT_PRODUCTS = [{"id": 1, "name": "Diamond Necklace Set", "category": 
 const OWNER_PHONE = '919482393897';
 const OWNER_EMAIL = 'jeswika.jewels@gmail.com';
 
-// South India pincode prefixes (first 2 digits)
-const SOUTH_PREFIXES = ['50','51','52','53','54','55','56','57','58','59','60','61','62','63','64','65','66','67','68','69','70','71','72','73','74','75','76','77','78','79','80','81','82','83'];
+// South India pincode detection using first 3 digits for accuracy
+// Covers: Andhra Pradesh (515-535), Telangana (500-509), Tamil Nadu (600-643),
+// Karnataka (560-591), Kerala (670-695), Goa (403), Andaman (744), Pondicherry (605)
+const SOUTH_PREFIXES_3 = [
+  '403',                                             // Goa
+  '500','501','502','503','504','505','506','507','508','509', // Telangana
+  '515','516','517','518','519','520','521','522','523','524','525','526','527','528','529',
+  '530','531','532','533','534','535',               // Andhra Pradesh
+  '560','561','562','563','564','565','566','567','568','569',
+  '570','571','572','573','574','575','576','577','578','579',
+  '580','581','582','583','584','585','586','587','588','589',
+  '590','591',                                       // Karnataka
+  '600','601','602','603','604','605','606','607','608','609',
+  '610','611','612','613','614','615','616','617','618','619',
+  '620','621','622','623','624','625','626','627','628','629',
+  '630','631','632','633','634','635','636','637','638','639',
+  '640','641','642','643',                           // Tamil Nadu
+  '670','671','672','673','674','675','676','677','678','679',
+  '680','681','682','683','684','685','686','687','688','689',
+  '690','691','692','693','694','695',               // Kerala
+  '744'                                              // Andaman & Nicobar
+];
 
 function getShippingInfo(pin) {
   if (!pin || pin.length < 6) return null;
-  const prefix = pin.substring(0,2);
-  const isSouth = SOUTH_PREFIXES.includes(prefix);
+  const prefix3 = pin.substring(0, 3);
+  const isSouth = SOUTH_PREFIXES_3.includes(prefix3);
   return {
     zone: isSouth ? 'South India' : 'North India',
     charge: isSouth ? 60 : 100,
@@ -3326,7 +3419,11 @@ function getShippingInfo(pin) {
 }
 
 function getProducts(){try{const s=localStorage.getItem('jj_products');return s?JSON.parse(s):DEFAULT_PRODUCTS;}catch(e){return DEFAULT_PRODUCTS;}}
-function saveProducts(p){try{localStorage.setItem('jj_products',JSON.stringify(p));}catch(e){}}
+function saveProducts(p){
+  try{localStorage.setItem('jj_products',JSON.stringify(p));}catch(e){}
+  // Sync to Firestore if available
+  if(window._fbProductFn) window._fbProductFn.saveAllProductsToFirestore(p).catch(()=>{});
+}
 
 function calcDiscount(price, original) {
   if (!original || !price) return 0;
@@ -3374,9 +3471,10 @@ function renderProducts() {
     </div>`;
   }).join('');
 
-  // Gallery with clickable Order Now
+  // Gallery with clickable Order Now — shows all available products
   const gallery = document.getElementById('gallery-grid');
-  gallery.innerHTML = products.slice(0,8).map(p => `
+  const galleryProds = products.filter(p => p.available !== false);
+  gallery.innerHTML = galleryProds.map(p => `
     <div class="gallery-cell">
       <img src="data:image/jpeg;base64,${p.img}" alt="${p.name}"/>
       <div class="gallery-overlay">
@@ -3453,7 +3551,7 @@ function doSearch(val) {
 function searchSelect(id) {
   closeSearch();
   document.getElementById('searchInput').value = '';
-  openOrderById(id);
+  openProductDetail(id);
 }
 
 function closeSearch() {
@@ -3465,11 +3563,11 @@ let currentProduct='', currentImg='', currentPrice='', currentPriceNum=0, curren
 
 
 // ===== CART STATE =====
-var cart = [];
+var cart = (function(){try{var s=localStorage.getItem('jj_cart');return s?JSON.parse(s):[];}catch(e){return [];}}());
 var currentPDProduct = null;
 
 function getCart(){return cart;}
-function saveCart(c){cart=c;updateCartBadge();}
+function saveCart(c){cart=c;try{localStorage.setItem('jj_cart',JSON.stringify(c));}catch(e){}updateCartBadge();}
 
 function updateCartBadge(){
   var count = cart.length;
@@ -3480,8 +3578,10 @@ function updateCartBadge(){
   }
 }
 
+var _pdScrollY = 0;
 // ===== OPEN PRODUCT DETAIL =====
 function openProductDetail(pid){
+  _pdScrollY = window.scrollY || window.pageYOffset;
   var products = getProducts();
   var p = products.find(function(x){return String(x.id)===String(pid);});
   if(!p) return;
@@ -3536,6 +3636,8 @@ function closePD(){
   document.getElementById('pdOverlay').classList.remove('active');
   document.body.style.overflow = '';
   currentPDProduct = null;
+  // Restore scroll position
+  setTimeout(function(){ window.scrollTo({top:_pdScrollY, behavior:'instant'}); }, 50);
 }
 
 function toggleZoom(img){
@@ -3615,7 +3717,8 @@ function closeLightbox(){
 function addCurrentToCart(){
   if(!currentPDProduct) return;
   cart.push({id:currentPDProduct.id, name:currentPDProduct.name, price:currentPDProduct.price, img:currentPDProduct.img});
-  updateCartBadge();
+  saveCart(cart);
+  showCartToast();
   document.getElementById('pdAddedMsg').style.display='block';
   var btn = document.getElementById('pdCartBtn');
   btn.textContent = '🛒 View Cart ➜';
@@ -3637,7 +3740,8 @@ function addToCartById(pid, btn){
     return;
   }
   cart.push({id:p.id, name:p.name, price:p.price, img:p.img});
-  updateCartBadge();
+  saveCart(cart);
+  showCartToast();
   // Visual feedback on card button — stays as "✓ Added" permanently
   if(btn){
     btn.innerHTML = '✓ Added to Cart';
@@ -3653,6 +3757,15 @@ function openCart(){
   document.getElementById('cartDrawer').classList.add('open');
   document.getElementById('cartOverlay').classList.add('active');
   document.body.style.overflow='hidden';
+}
+
+var _toastTimer = null;
+function showCartToast(){
+  var t = document.getElementById('cart-add-toast');
+  if(!t) return;
+  t.classList.add('show');
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 3500);
 }
 
 function closeCart(){
@@ -3692,7 +3805,7 @@ function renderCartItems(){
 function removeFromCart(idx){
   var removed = cart[idx];
   cart.splice(idx,1);
-  updateCartBadge();
+  saveCart(cart);
   renderCartItems();
   // Sync the product card button back to "Add to Cart"
   if(removed){
@@ -4335,6 +4448,10 @@ function submitOrder() {
   // Set customer confirm link
   document.getElementById('wa-confirm-link').href='https://wa.me/'+OWNER_PHONE+'?text='+custMsg;
 
+  // Clear cart after successful order
+  cart = [];
+  saveCart(cart);
+
   goOrderStep(4);
 }
 
@@ -4344,31 +4461,69 @@ document.getElementById('orderModal').addEventListener('click',function(e){if(e.
 function showAdminLogin(){document.getElementById('admin-login').classList.add('active');setTimeout(()=>document.getElementById('admin-password').focus(),100);}
 function hideAdminLogin(){document.getElementById('admin-login').classList.remove('active');document.getElementById('admin-password').value='';document.getElementById('login-error').style.display='none';}
 function doLogin(){
-  var email = document.getElementById('admin-email') ? document.getElementById('admin-email').value.trim() : 'karthiikbs@gmail.com';
+  var email = document.getElementById('admin-email') ? document.getElementById('admin-email').value.trim() : '';
   var password = document.getElementById('admin-password').value;
   var loginBtn = document.getElementById('admin-login-btn');
-  if(loginBtn){ loginBtn.textContent = 'Signing in...'; loginBtn.disabled = true; }
+  var errorEl = document.getElementById('login-error');
 
-  if(!window._fbAuth || !window._fbFunctions) {
-    alert('Firebase not loaded. Check internet connection.');
-    if(loginBtn){ loginBtn.textContent = 'Login'; loginBtn.disabled = false; }
+  if(!email || !password){
+    errorEl.textContent = '❌ Please enter email and password.';
+    errorEl.style.display='block';
     return;
   }
 
-  window._fbFunctions.signInWithEmailAndPassword(window._fbAuth, email, password)
-    .then(function(userCredential) {
-      hideAdminLogin();
-      document.getElementById('admin-panel').style.display='block';
-      document.body.style.overflow='hidden';
-      renderAdminTable();
-      updateStats();
-      startClock();
-    })
-    .catch(function(error) {
-      document.getElementById('login-error').style.display='block';
-      document.getElementById('admin-password').value='';
-      if(loginBtn){ loginBtn.textContent = 'Login'; loginBtn.disabled = false; }
-    });
+  if(loginBtn){ loginBtn.textContent = '⏳ Signing in...'; loginBtn.disabled = true; }
+  errorEl.style.display='none';
+
+  function attemptLogin(){
+    var loginTimeout = setTimeout(function(){
+      errorEl.textContent = '❌ Login timed out. Check internet connection.';
+      errorEl.style.display='block';
+      if(loginBtn){ loginBtn.textContent = 'Login to Admin Panel'; loginBtn.disabled = false; }
+    }, 12000);
+
+    window._fbFunctions.signInWithEmailAndPassword(window._fbAuth, email, password)
+      .then(function(userCredential) {
+        clearTimeout(loginTimeout);
+        hideAdminLogin();
+        document.getElementById('admin-panel').style.display='block';
+        document.body.style.overflow='hidden';
+        if(typeof renderAdminTable === 'function') renderAdminTable();
+        if(typeof updateStats === 'function') updateStats();
+        if(typeof startClock === 'function') startClock();
+      })
+      .catch(function(error) {
+        clearTimeout(loginTimeout);
+        var msg = '❌ Login failed. Check email and password.';
+        if(error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = '❌ Incorrect password. Please try again.';
+        else if(error.code === 'auth/user-not-found') msg = '❌ Email not found.';
+        else if(error.code === 'auth/too-many-requests') msg = '❌ Too many failed attempts. Try again later.';
+        else if(error.code === 'auth/network-request-failed') msg = '❌ Network error. Check internet connection.';
+        else if(error.code === 'auth/unauthorized-domain') msg = '❌ Domain not authorized in Firebase.';
+        errorEl.textContent = msg;
+        errorEl.style.display='block';
+        document.getElementById('admin-password').value='';
+        if(loginBtn){ loginBtn.textContent = 'Login to Admin Panel'; loginBtn.disabled = false; }
+      });
+  }
+
+  if(window._fbReady && window._fbAuth && window._fbFunctions){
+    attemptLogin();
+  } else {
+    var waited = 0;
+    var waitInterval = setInterval(function(){
+      waited += 200;
+      if(window._fbReady && window._fbAuth && window._fbFunctions){
+        clearInterval(waitInterval);
+        attemptLogin();
+      } else if(waited >= 8000){
+        clearInterval(waitInterval);
+        errorEl.textContent = '❌ Firebase failed to load. Refresh the page and try again.';
+        errorEl.style.display='block';
+        if(loginBtn){ loginBtn.textContent = 'Login to Admin Panel'; loginBtn.disabled = false; }
+      }
+    }, 200);
+  }
 }
 function exitAdmin(){
   document.getElementById('admin-panel').style.display='none';
@@ -4407,7 +4562,7 @@ function renderAdminTable(){
   }).join('');
 }
 function toggleAvail(id){const p=getProducts();const x=p.find(i=>i.id===id);if(x){x.available=x.available===false;saveProducts(p);renderAdminTable();updateStats();renderProducts();}}
-function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=getProducts().filter(x=>x.id!==id);saveProducts(p);renderAdminTable();updateStats();renderProducts();}
+function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=getProducts().filter(x=>x.id!==id);saveProducts(p);if(window._fbProductFn)window._fbProductFn.deleteProductFromFirestore(id).catch(()=>{});renderAdminTable();updateStats();renderProducts();}
 let editingId=null;
 function openAddProduct(){
   editingId=null;
@@ -4470,7 +4625,21 @@ function saveProduct(){
 document.getElementById('adminProductModal').addEventListener('click',function(e){if(e.target===this)closeAdminModal();});
 
 renderProducts();
+// Restore cart button states on load (cart persisted in localStorage)
+updateCartBadge();
+(function syncCartButtons(){
+  cart.forEach(function(item){
+    var btn = document.getElementById('cart-btn-'+item.id);
+    if(btn){ btn.innerHTML='✓ Added to Cart'; btn.style.background='var(--gold)'; btn.style.color='white'; btn.style.borderColor='var(--gold)'; btn.onclick=function(e){e.stopPropagation();openCart();}; }
+  });
+})();
 </script>
+
+<!-- CART ADD TOAST -->
+<div id="cart-add-toast">
+  <span>✓ Added to cart!</span>
+  <button class="toast-cart-btn" onclick="document.getElementById('cart-add-toast').classList.remove('show');openCart();">View Cart →</button>
+</div>
 
 <!-- CART OVERLAY + DRAWER -->
 <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
