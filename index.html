@@ -5,10 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jeswika Jewels — Fine South Indian Jewellery</title>
 <!-- Firebase SDK -->
+<script>
+// Carousel functions — must be global, defined before module script
+var _carouselTimer = null;
+function scrollCarousel(dir) {
+  var track = document.getElementById('gallery-grid');
+  if (!track) return;
+  var cellW = track.querySelector('.gallery-cell');
+  var scrollAmt = cellW ? (cellW.offsetWidth + 8) * 2 : 260;
+  track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
+}
+function startCarouselAuto() {
+  if (_carouselTimer) clearInterval(_carouselTimer);
+  _carouselTimer = setInterval(function() {
+    var track = document.getElementById('gallery-grid');
+    if (!track) return;
+    var maxScroll = track.scrollWidth - track.clientWidth;
+    if (track.scrollLeft >= maxScroll - 5) {
+      track.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      var cellW = track.querySelector('.gallery-cell');
+      var scrollAmt = cellW ? (cellW.offsetWidth + 8) : 130;
+      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
+    }
+  }, 3000);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var track = document.getElementById('gallery-grid');
+  if (track) {
+    track.addEventListener('mouseenter', function() { if (_carouselTimer) clearInterval(_carouselTimer); });
+    track.addEventListener('mouseleave', startCarouselAuto);
+    track.addEventListener('touchstart', function() { if (_carouselTimer) clearInterval(_carouselTimer); }, {passive:true});
+    track.addEventListener('touchend', function() { setTimeout(startCarouselAuto, 3000); }, {passive:true});
+  }
+});
+</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, deleteDoc, updateDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDb-YhUfHqs1men0DWq7eOP5Mzq73OFnjo",
@@ -63,11 +98,24 @@
     } catch(e) { console.warn('Firestore delete failed:', e); }
   }
 
-  // Save entire products array to Firestore
+  // Save entire products array to Firestore (delete removed ones too)
   async function saveAllProductsToFirestore(products) {
-    for (const p of products) {
-      await saveProductToFirestore(p);
-    }
+    try {
+      // Get current Firestore IDs
+      const snap = await getDocs(collection(db, 'products'));
+      const existingIds = snap.docs.map(d => d.id);
+      const newIds = products.map(p => String(p.id));
+      // Delete products removed locally
+      for (const eid of existingIds) {
+        if (!newIds.includes(eid)) {
+          await deleteDoc(doc(db, 'products', eid));
+        }
+      }
+      // Save/update all current products
+      for (const p of products) {
+        await saveProductToFirestore(p);
+      }
+    } catch(e) { console.warn('Firestore saveAll failed:', e); }
   }
 
   window._fbProductFn = {
@@ -115,16 +163,23 @@
     deleteProductImage
   };
 
-  // Auto-load products from Firestore on startup (always sync from server)
-  localStorage.removeItem('jj_products'); // Clear stale cache so Firestore is always authoritative
-  loadProductsFromFirestore().then(prods => {
-    if (prods) {
-      localStorage.setItem('jj_products', JSON.stringify(prods));
-      if (typeof renderProducts === 'function') renderProducts();
-      if (typeof updateStats === 'function') updateStats();
-      if (typeof renderAdminTable === 'function') renderAdminTable();
+  // Real-time listener — auto-updates all devices when products change
+  let _firstLoad = true;
+  onSnapshot(collection(db, 'products'), (snap) => {
+    if (snap.empty) return;
+    const prods = snap.docs.map(d => d.data());
+    const current = localStorage.getItem('jj_products');
+    const updated = JSON.stringify(prods);
+    localStorage.setItem('jj_products', updated);
+    if (typeof renderProducts === 'function') renderProducts();
+    if (typeof updateStats === 'function') updateStats();
+    if (typeof renderAdminTable === 'function') renderAdminTable();
+    // Show toast on other devices (not on first load)
+    if (!_firstLoad && current !== updated) {
+      showSyncToast();
     }
-  });
+    _firstLoad = false;
+  }, (err) => { console.warn('Firestore listener failed:', err); });
 
   // Dispatch event so doLogin() knows Firebase is ready
   window.dispatchEvent(new Event('firebaseReady'));
@@ -247,6 +302,8 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .btn-hero-out:hover{background:var(--gold);color:var(--white);}
 .hero-trust{display:flex;gap:28px;margin-top:44px;padding-top:36px;border-top:1px solid var(--gold-border);flex-wrap:wrap;}
 .trust-item{display:flex;align-items:center;gap:10px;}
+#sync-toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:50px;font-size:13px;font-family:'Jost',sans-serif;letter-spacing:0.5px;opacity:0;transition:all 0.4s ease;z-index:9999;pointer-events:none;white-space:nowrap;}
+#sync-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .trust-icon{width:34px;height:34px;background:var(--gold-pale);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .trust-text{font-size:12px;color:var(--text-mid);line-height:1.4;}
 .trust-text strong{display:block;font-size:13px;color:var(--text);font-weight:500;}
@@ -340,9 +397,11 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .policy-card ul li::before{content:'✓';position:absolute;left:0;color:var(--gold);font-weight:bold;}
 .policy-card ul li.warn::before{content:'⚠';color:#FF9800;}
 
-/* GALLERY */
-.gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:48px;}
-.gallery-cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;}
+/* GALLERY / CAROUSEL */
+.carousel-wrapper{position:relative;overflow:hidden;padding:0 40px;}
+.gallery-track{display:flex;gap:8px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:8px 0 16px;}
+.gallery-track::-webkit-scrollbar{display:none;}
+.gallery-cell{flex:0 0 calc(25% - 6px);aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;border-radius:2px;}
 .gallery-cell img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
 .gallery-cell:hover img{transform:scale(1.06);}
 .gallery-overlay{position:absolute;inset:0;background:rgba(184,134,11,0.5);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;opacity:0;transition:opacity .3s;}
@@ -350,6 +409,10 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .gallery-overlay-name{color:white;font-size:13px;font-family:'Playfair Display',serif;text-align:center;padding:0 8px;}
 .gallery-overlay-btn{background:var(--white);color:var(--gold);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px 18px;border:none;cursor:pointer;font-family:'Jost',sans-serif;font-weight:500;transition:all .2s;}
 .gallery-overlay-btn:hover{background:var(--gold);color:white;}
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:var(--gold-mid);color:white;border:none;width:34px;height:34px;border-radius:50%;font-size:22px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background .2s;}
+.carousel-btn:hover{background:var(--gold);}
+.carousel-btn-left{left:0;}
+.carousel-btn-right{right:0;}
 
 /* TESTIMONIALS */
 .testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
@@ -561,7 +624,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .hero-trust{gap:16px;margin-top:28px;padding-top:20px;}
   .section{padding:48px 20px;}
   .section-header{margin-bottom:32px;}
-  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:2px;}
+  .gallery-cell{flex:0 0 calc(50% - 4px);}
   .how-grid{grid-template-columns:1fr;}
   .testi-grid{grid-template-columns:1fr;}
   .footer-grid{grid-template-columns:1fr;}
@@ -3161,8 +3224,12 @@ var qrcode = function() {
 </section>
 
 <section class="section" id="gallery">
-  <div class="section-head"><p class="eyebrow">Our Collection</p><h2 class="section-title">Photo <em>Gallery</em></h2><div class="ornament-line"><div class="ornament-line-dot"></div></div></div>
-  <div class="gallery-grid" id="gallery-grid"></div>
+  <div class="section-head"><p class="eyebrow">Explore More</p><h2 class="section-title">You May Also <em>Like</em></h2><div class="ornament-line"><div class="ornament-line-dot"></div></div></div>
+  <div class="carousel-wrapper">
+    <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="Previous">&#8249;</button>
+    <div class="gallery-track" id="gallery-grid"></div>
+    <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="Next">&#8250;</button>
+  </div>
 </section>
 
 <section class="section bg-cream">
@@ -3436,8 +3503,8 @@ var qrcode = function() {
           <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;margin:0 0 16px;color:var(--text);">Manage Categories</h3>
           <div id="cat-list" style="margin-bottom:14px;"></div>
           <div style="display:flex;gap:8px;margin-bottom:16px;">
-            <input id="cat-new-input" type="text" placeholder="New category name" style="flex:1;padding:8px;border:1px solid #ddd;font-family:'Jost',sans-serif;font-size:13px;outline:none;"/>
-            <button onclick="addCategory()" style="background:var(--gold-mid);color:#fff;border:none;padding:8px 14px;cursor:pointer;font-family:'Jost',sans-serif;font-size:12px;">Add</button>
+            <input id="cat-new-input" type="text" placeholder="New category name" onkeydown="if(event.key==='Enter')addCategory()" style="flex:1;padding:8px 10px;border:1px solid #B8860B;font-family:'Jost',sans-serif;font-size:13px;outline:none;border-radius:3px;"/>
+            <button onclick="addCategory()" title="Save category" style="background:var(--gold-mid);color:#fff;border:none;padding:8px 16px;cursor:pointer;font-family:'Jost',sans-serif;font-size:16px;border-radius:3px;line-height:1;">✓</button>
           </div>
           <button onclick="document.getElementById('cat-modal').style.display='none'" style="width:100%;background:none;border:1px solid #ccc;padding:9px;cursor:pointer;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;">Close</button>
         </div>
@@ -3557,7 +3624,7 @@ function renderProducts() {
     </div>`;
   }).join('');
 
-  // Gallery with clickable Order Now — shows all available products
+  // Gallery / You May Also Like carousel — shows all available products
   const gallery = document.getElementById('gallery-grid');
   const galleryProds = products.filter(p => p.available !== false);
   gallery.innerHTML = galleryProds.map(p => `
@@ -3568,6 +3635,7 @@ function renderProducts() {
         ${p.available!==false ? `<button class="gallery-overlay-btn" onclick="openOrderById('${p.id}')">Order Now</button>` : '<div style="background:#DC2626;color:white;padding:5px 14px;font-size:11px;letter-spacing:2px;">Sold Out</div>'}
       </div>
     </div>`).join('');
+  setTimeout(() => { if(typeof startCarouselAuto==='function') startCarouselAuto(); }, 1000);
 }
 
 function filterProducts(btn, cat) {
@@ -5052,5 +5120,15 @@ updateCartBadge();
   </div>
 </div>
 <script>document.getElementById('copy-year').textContent = new Date().getFullYear();</script>
+<!-- Sync toast -->
+<div id="sync-toast">✦ Products updated</div>
+<script>
+function showSyncToast() {
+  var t = document.getElementById('sync-toast');
+  if (!t) return;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+</script>
 </body>
 </html>
