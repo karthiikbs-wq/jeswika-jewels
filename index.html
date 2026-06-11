@@ -3476,7 +3476,7 @@ function renderProducts() {
         <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''} style="display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;min-height:46px;${p.available===false?'opacity:0.5;cursor:not-allowed;':''}">
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
-        <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''>
+        <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
           ${p.available===false?'Sold Out':'Buy Now'}
         </button>
       </div>
