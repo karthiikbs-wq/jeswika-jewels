@@ -115,15 +115,14 @@
     deleteProductImage
   };
 
-  // Auto-load products from Firestore on startup
+  // Auto-load products from Firestore on startup (always sync from server)
+  localStorage.removeItem('jj_products'); // Clear stale cache so Firestore is always authoritative
   loadProductsFromFirestore().then(prods => {
     if (prods) {
+      localStorage.setItem('jj_products', JSON.stringify(prods));
       if (typeof renderProducts === 'function') renderProducts();
       if (typeof updateStats === 'function') updateStats();
-      if (typeof renderAdminTable === 'function') {
-        var adminPanel = document.getElementById('admin-panel');
-        if (adminPanel && adminPanel.classList.contains('active')) renderAdminTable();
-      }
+      if (typeof renderAdminTable === 'function') renderAdminTable();
     }
   });
 
@@ -3352,7 +3351,7 @@ var qrcode = function() {
         <div class="success-box">
           <div class="success-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#B8860B" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
           <h3>Order Submitted!</h3>
-          <div class="order-id-box" id="order-id-display">Order #JJ-000000</div>
+          <div class="order-id-box" id="order-id-display">Order #TK-000000</div>
           <div class="success-note" style="margin-top:16px;text-align:left;">
             <p>✅ <strong>Final Step — Confirm on WhatsApp</strong></p>
             <p style="margin-top:6px;">Your order is NOT yet confirmed. Please send your <strong>payment screenshot</strong> on WhatsApp to complete your order. We will confirm once payment is verified.</p>
@@ -3427,11 +3426,21 @@ var qrcode = function() {
         <div class="admin-form-group"><label>Display Position #</label><input type="number" id="ap-position" placeholder="e.g. 1" min="1" style="width:100%;"/></div>
       </div>
       <div class="admin-form-group"><label>Category *</label>
-        <select id="ap-category">
-          <option>Necklace</option><option>Pearl Haram</option><option>Choker</option>
-          <option>American Diamonds</option><option>Invisible Chain</option>
-          <option>Kaasu Mala</option><option>Bridal Collections</option><option>Other</option>
-        </select>
+        <select id="ap-category"></select>
+        <button type="button" onclick="openManageCategories()" style="margin-top:6px;background:none;border:1px dashed var(--gold);color:var(--gold);padding:5px 10px;font-size:11px;cursor:pointer;letter-spacing:1px;font-family:'Jost',sans-serif;">⚙ Manage Categories</button>
+      </div>
+
+      <!-- Manage Categories Modal -->
+      <div id="cat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;padding:24px;width:340px;max-width:95vw;border-radius:4px;max-height:80vh;overflow-y:auto;">
+          <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;margin:0 0 16px;color:var(--text);">Manage Categories</h3>
+          <div id="cat-list" style="margin-bottom:14px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <input id="cat-new-input" type="text" placeholder="New category name" style="flex:1;padding:8px;border:1px solid #ddd;font-family:'Jost',sans-serif;font-size:13px;outline:none;"/>
+            <button onclick="addCategory()" style="background:var(--gold-mid);color:#fff;border:none;padding:8px 14px;cursor:pointer;font-family:'Jost',sans-serif;font-size:12px;">Add</button>
+          </div>
+          <button onclick="document.getElementById('cat-modal').style.display='none'" style="width:100%;background:none;border:1px solid #ccc;padding:9px;cursor:pointer;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;">Close</button>
+        </div>
       </div>
       <div class="form-row-admin">
         <div class="admin-form-group"><label>Selling Price (₹) *</label><input type="text" id="ap-price" placeholder="e.g. 599"/></div>
@@ -3530,7 +3539,7 @@ function renderProducts() {
       ${p.badge && p.badgeColor ? `<div class="badge-corner ${badgeClass}">${p.badge}</div>` : ''}
       <div class="prod-img"><img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/></div>
       <div class="prod-body">
-        <div class="prod-id">ID: JJ-${String(p.id).padStart(3,'0')}</div>
+        <div class="prod-id">ID: TK-${String(p.id).padStart(3,'0')}</div>
         <div class="prod-badge-cat">${p.category}</div>
         <div class="prod-name">${p.name}</div>
         <div class="prod-pricing">
@@ -3603,7 +3612,7 @@ function doSearch(val) {
   const q = val.toLowerCase();
   const matches = products.filter(p =>
     p.name.toLowerCase().includes(q) ||
-    `JJ-${String(p.id).padStart(3,'0')}`.toLowerCase().includes(q) ||
+    `TK-${String(p.id).padStart(3,'0')}`.toLowerCase().includes(q) ||
     String(p.id).includes(q) ||
     p.category.toLowerCase().includes(q)
   ).slice(0,5);
@@ -3616,7 +3625,7 @@ function doSearch(val) {
         <img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/>
         <div class="search-result-info">
           <div class="search-result-name">${p.name}</div>
-          <div class="search-result-id">ID: JJ-${String(p.id).padStart(3,'0')} · ${p.category}</div>
+          <div class="search-result-id">ID: TK-${String(p.id).padStart(3,'0')} · ${p.category}</div>
           <div class="search-result-price">${price}</div>
         </div>
       </div>`;
@@ -3680,7 +3689,7 @@ function openProductDetail(pid){
   document.getElementById('pdImgMobile').className = 'pd-main-img';
   document.getElementById('pdCat').textContent = p.category || '';
   document.getElementById('pdName').textContent = p.name;
-  document.getElementById('pdIdLabel').textContent = 'ID: JJ-' + String(p.id).padStart(3,'0');
+  document.getElementById('pdIdLabel').textContent = 'ID: TK-' + String(p.id).padStart(3,'0');
   // pricing
   var priceNum = p.price ? parseFloat(p.price) : null;
   var origNum = p.originalPrice ? parseFloat(p.originalPrice) : null;
@@ -3897,7 +3906,7 @@ function renderCartItems(){
       '<div class="cart-item-info">'+
         '<div class="cart-item-name">'+item.name+'</div>'+
         '<div class="cart-item-price">₹'+(priceNum?priceNum.toLocaleString('en-IN'):'Contact for price')+'</div>'+
-        '<div class="cart-item-id">ID: JJ-'+String(item.id).padStart(3,'0')+'</div>'+
+        '<div class="cart-item-id">ID: TK-'+String(item.id).padStart(3,'0')+'</div>'+
       '</div>'+
       '<button class="cart-item-remove" onclick="removeFromCart('+idx+')">✕</button>'+
     '</div>';
@@ -4456,7 +4465,7 @@ function launchRazorpay() {
     const total = currentPriceNum + currentShipping;
     const name = document.getElementById('cust-name').value.trim();
     const phone = document.getElementById('cust-phone').value.trim();
-    const orderId = 'JJ-' + Date.now().toString().slice(-8) + Math.floor(Math.random()*90+10);
+    const orderId = 'TK-' + Date.now().toString().slice(-8) + Math.floor(Math.random()*90+10);
 
     const options = {
       key: 'rzp_test_SzohkfXkyAbKTq',
@@ -4502,7 +4511,7 @@ function submitOrder() {
   const city=document.getElementById('cust-city').value.trim();
   const pin=document.getElementById('cust-pin').value.trim();
   const total=currentPriceNum+currentShipping;
-  const orderId='JJ-'+Date.now().toString().slice(-8)+Math.floor(Math.random()*90+10);
+  const orderId='TK-'+Date.now().toString().slice(-8)+Math.floor(Math.random()*90+10);
   const now=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
 
   document.getElementById('order-id-display').textContent='Order #'+orderId;
@@ -4730,16 +4739,59 @@ function updateStats(){
   document.getElementById('stat-soldout').textContent=p.filter(x=>x.available===false).length;
   document.getElementById('stat-categories').textContent=[...new Set(p.map(x=>x.category))].length;
 }
+// ── Category Management ──
+var DEFAULT_CATEGORIES = ['Necklace','Pearl Haram','Choker','American Diamonds','Invisible Chain','Kaasu Mala','Bridal Collections','Other'];
+function getCategories(){try{const s=localStorage.getItem('jj_categories');return s?JSON.parse(s):DEFAULT_CATEGORIES.slice();}catch(e){return DEFAULT_CATEGORIES.slice();}}
+function saveCategories(cats){try{localStorage.setItem('jj_categories',JSON.stringify(cats));}catch(e){}}
+function populateCategoryDropdown(){
+  const sel=document.getElementById('ap-category');if(!sel)return;
+  const cats=getCategories();const cur=sel.value;
+  sel.innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(cur&&cats.includes(cur))sel.value=cur;
+}
+function openManageCategories(){
+  const modal=document.getElementById('cat-modal');
+  modal.style.display='flex';
+  renderCatList();
+}
+function renderCatList(){
+  const cats=getCategories();
+  document.getElementById('cat-list').innerHTML=cats.map((c,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;">
+      <span style="font-size:13px;font-family:'Jost',sans-serif;">${c}</span>
+      ${cats.length>1?`<button onclick="deleteCategory(${i})" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:13px;">✕</button>`:''}
+    </div>`).join('');
+}
+function addCategory(){
+  const inp=document.getElementById('cat-new-input');
+  const name=(inp.value||'').trim();
+  if(!name)return;
+  const cats=getCategories();
+  if(cats.includes(name)){alert('Category already exists');return;}
+  cats.push(name);saveCategories(cats);
+  inp.value='';renderCatList();populateCategoryDropdown();
+}
+function deleteCategory(idx){
+  const cats=getCategories();
+  const name=cats[idx];
+  const prods=getProducts();
+  const inUse=prods.some(p=>p.category===name);
+  if(inUse&&!confirm(`"${name}" is used by some products. Delete anyway?`))return;
+  cats.splice(idx,1);saveCategories(cats);
+  renderCatList();populateCategoryDropdown();
+}
+
 function renderAdminTable(){
   const products=getProducts();
-  const search=(document.getElementById('admin-search').value||'').toLowerCase();
+  const searchEl = document.getElementById('admin-search');
+  const search = (searchEl ? searchEl.value : '').toLowerCase();
   const filtered=products.filter(p=>p.name.toLowerCase().includes(search)||p.category.toLowerCase().includes(search));
   document.getElementById('admin-table-body').innerHTML=filtered.map(p=>{
     const disc=calcDiscount(p.price,p.originalPrice);
     return `<tr>
       <td style="text-align:center;font-size:13px;font-weight:600;color:var(--gold);min-width:32px;">${p.position != null ? p.position : '—'}</td>
       <td><img src="${p.imgUrl||('data:image/jpeg;base64,'+p.img)}" class="prod-thumb" alt="${p.name}"/></td>
-      <td style="font-size:11px;color:var(--text-light);">JJ-${String(p.id).padStart(3,'0')}</td>
+      <td style="font-size:11px;color:var(--text-light);">TK-${String(p.id).padStart(3,'0')}</td>
       <td><strong>${p.name}</strong></td>
       <td><span class="badge-cat">${p.category}</span></td>
       <td><strong style="color:#DC2626;">₹${p.price||'—'}</strong>${p.originalPrice?` <span style="text-decoration:line-through;color:#999;font-size:12px;">₹${p.originalPrice}</span>`:''}${disc>0?` <span style="color:#16A34A;font-size:11px;">${disc}%off</span>`:''}</td>
@@ -4760,7 +4812,8 @@ function openAddProduct(){
   window._pendingImgBlob = null;
   document.getElementById('admin-modal-title').textContent='Add New Product';
   ['ap-name','ap-price','ap-original','ap-badge'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('ap-category').value='Necklace';
+  populateCategoryDropdown();
+  document.getElementById('ap-category').value=getCategories()[0]||'Necklace';
   document.getElementById('ap-badge-color').value='';
   document.getElementById('ap-available').value='true';
   document.getElementById('ap-image').value='';
@@ -4778,6 +4831,7 @@ function editProduct(id){
   window._pendingImgBlob = null;
   document.getElementById('admin-modal-title').textContent='Edit Product';
   document.getElementById('ap-name').value=p.name;
+  populateCategoryDropdown();
   document.getElementById('ap-category').value=p.category;
   document.getElementById('ap-price').value=p.price||'';
   document.getElementById('ap-original').value=p.originalPrice||'';
