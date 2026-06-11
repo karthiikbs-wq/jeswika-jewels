@@ -77,6 +77,44 @@
     saveAllProductsToFirestore
   };
 
+  // ── Cloudinary image upload helpers ──
+  // Upload image blob to Cloudinary, return secure URL
+  async function uploadProductImage(productId, blob) {
+    try {
+      const CLOUD_NAME = 'ddgpbmhqa';
+      const UPLOAD_PRESET = 'jeswika_jewels'; // unsigned preset (set up in Cloudinary)
+      const formData = new FormData();
+      formData.append('file', blob);
+      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('folder', 'jeswika-jewels/products');
+      formData.append('public_id', 'product_' + productId);
+      formData.append('overwrite', 'true');
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if(data.secure_url) return data.secure_url;
+      console.warn('Cloudinary upload failed:', data);
+      return null;
+    } catch(e) {
+      console.warn('Cloudinary upload error:', e);
+      return null;
+    }
+  }
+
+  // Delete image from Cloudinary (via Firestore-stored public_id)
+  async function deleteProductImage(productId) {
+    // Deletion from client side requires signed request — skip silently
+    // Images are overwritten on re-upload anyway
+    console.log('Image delete skipped (client-side Cloudinary deletion requires server)');
+  }
+
+  window._fbStorageFn = {
+    uploadProductImage,
+    deleteProductImage
+  };
+
   // Auto-load products from Firestore on startup
   loadProductsFromFirestore().then(prods => {
     if (prods) {
@@ -3338,7 +3376,7 @@ var qrcode = function() {
     <div class="admin-topbar-right"><span id="admin-clock"></span><button class="admin-logout" onclick="exitAdmin()">← Back to Website</button></div>
   </div>
   <div class="admin-content">
-    <div class="admin-header"><h1>Product Dashboard</h1><button class="btn-gold" onclick="openAddProduct()">+ Add New Product</button></div>
+    <div class="admin-header"><h1>Product Dashboard</h1><div style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn-gold" onclick="openAddProduct()">+ Add New Product</button><button id="sync-fb-btn" onclick="syncAllToFirestore()" style="background:none;border:1px solid #1D4ED8;color:#1D4ED8;padding:8px 14px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;cursor:pointer;">☁ Sync to Firestore</button></div></div>
     <div class="admin-stats">
       <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total Products</div></div>
       <div class="stat-card"><div class="stat-num" id="stat-available">0</div><div class="stat-label">Available</div></div>
@@ -3463,7 +3501,7 @@ function renderProducts() {
       ${p.available===false ? '<div class="sold-overlay"><div class="sold-badge-abs">Sold Out</div></div>' : ''}
       ${disc>0 && p.available!==false ? `<div class="disc-badge">${disc}%<br>OFF</div>` : ''}
       ${p.badge && p.badgeColor ? `<div class="badge-corner ${badgeClass}">${p.badge}</div>` : ''}
-      <div class="prod-img"><img src="data:image/jpeg;base64,${p.img}" alt="${p.name}"/></div>
+      <div class="prod-img"><img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/></div>
       <div class="prod-body">
         <div class="prod-id">ID: JJ-${String(p.id).padStart(3,'0')}</div>
         <div class="prod-badge-cat">${p.category}</div>
@@ -3488,7 +3526,7 @@ function renderProducts() {
   const galleryProds = products.filter(p => p.available !== false);
   gallery.innerHTML = galleryProds.map(p => `
     <div class="gallery-cell">
-      <img src="data:image/jpeg;base64,${p.img}" alt="${p.name}"/>
+      <img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/>
       <div class="gallery-overlay">
         <div class="gallery-overlay-name">${p.name}</div>
         ${p.available!==false ? `<button class="gallery-overlay-btn" onclick="openOrderById('${p.id}')">Order Now</button>` : '<div style="background:#DC2626;color:white;padding:5px 14px;font-size:11px;letter-spacing:2px;">Sold Out</div>'}
@@ -3548,7 +3586,7 @@ function doSearch(val) {
     results.innerHTML = matches.map(p => {
       const price = p.price ? `₹${parseFloat(p.price).toLocaleString('en-IN')}` : 'Contact for Price';
       return `<div class="search-result-item" onclick="searchSelect(${p.id})">
-        <img src="data:image/jpeg;base64,${p.img}" alt="${p.name}"/>
+        <img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/>
         <div class="search-result-info">
           <div class="search-result-name">${p.name}</div>
           <div class="search-result-id">ID: JJ-${String(p.id).padStart(3,'0')} · ${p.category}</div>
@@ -3572,6 +3610,13 @@ function closeSearch() {
 
 // ── ORDER MODAL ──
 let currentProduct='', currentImg='', currentPrice='', currentPriceNum=0, currentShipping=0;
+
+// ── Image source helper — supports both Firebase Storage URL and legacy base64 ──
+function getImgSrc(p) {
+  if(p.imgUrl) return p.imgUrl;
+  if(p.img) return 'data:image/jpeg;base64,' + p.img;
+  return '';
+}
 
 
 // ===== CART STATE =====
@@ -3598,7 +3643,7 @@ function openProductDetail(pid){
   var p = products.find(function(x){return String(x.id)===String(pid);});
   if(!p) return;
   currentPDProduct = p;
-  var imgSrc = 'data:image/jpeg;base64,' + p.img;
+  var imgSrc = getImgSrc(p);
   // Set both desktop and mobile images
   document.getElementById('pdImg').src = imgSrc;
   document.getElementById('pdImg').alt = p.name;
@@ -3748,7 +3793,7 @@ function closeLightbox(){
 // ===== CART FUNCTIONS =====
 function addCurrentToCart(){
   if(!currentPDProduct) return;
-  cart.push({id:currentPDProduct.id, name:currentPDProduct.name, price:currentPDProduct.price, img:currentPDProduct.img});
+  cart.push({id:currentPDProduct.id, name:currentPDProduct.name, price:currentPDProduct.price, img:currentPDProduct.img, imgUrl:currentPDProduct.imgUrl||null});
   saveCart(cart);
   showCartToast();
   document.getElementById('pdAddedMsg').style.display='block';
@@ -3771,7 +3816,7 @@ function addToCartById(pid, btn){
     openCart();
     return;
   }
-  cart.push({id:p.id, name:p.name, price:p.price, img:p.img});
+  cart.push({id:p.id, name:p.name, price:p.price, img:p.img, imgUrl:p.imgUrl||null});
   saveCart(cart);
   showCartToast();
   // Visual feedback on card button — stays as "✓ Added" permanently
@@ -3821,7 +3866,7 @@ function renderCartItems(){
     var priceNum = item.price ? parseFloat(item.price) : 0;
     total += priceNum;
     html += '<div class="cart-item">'+
-      '<img src="data:image/jpeg;base64,'+item.img+'" alt="'+item.name+'"/>'+
+      '<img src="'+(item.imgUrl||('data:image/jpeg;base64,'+item.img))+'" alt="'+item.name+'"/>'+
       '<div class="cart-item-info">'+
         '<div class="cart-item-name">'+item.name+'</div>'+
         '<div class="cart-item-price">₹'+(priceNum?priceNum.toLocaleString('en-IN'):'Contact for price')+'</div>'+
@@ -3869,7 +3914,7 @@ function checkoutCart(){
   closePD();
   // Open order modal 
   var firstItem = cart[0];
-  document.getElementById('modal-prod-img').src = 'data:image/jpeg;base64,'+firstItem.img;
+  document.getElementById('modal-prod-img').src = firstItem.imgUrl || ('data:image/jpeg;base64,'+firstItem.img);
   document.getElementById('modal-prod-name').textContent = cart.length>1 ? cart.length+' items selected' : firstItem.name;
   document.getElementById('modal-prod-price').textContent = '₹'+total.toLocaleString('en-IN');
   goOrderStep(1);
@@ -3890,12 +3935,12 @@ function openOrderById(pid) {
   const priceNum = p.price ? parseFloat(p.price) : 0;
   const displayPrice = priceNum ? '₹'+priceNum.toLocaleString('en-IN') : 'Contact for Price';
   currentProduct = p.name;
-  currentImg = p.img;
+  currentImg = getImgSrc(p);
   currentPrice = displayPrice;
   currentPriceNum = priceNum;
   currentShipping = 0;
   document.getElementById('modal-prod-name').textContent = p.name;
-  document.getElementById('modal-prod-img').src = 'data:image/jpeg;base64,'+p.img;
+  document.getElementById('modal-prod-img').src = getImgSrc(p);
   document.getElementById('modal-prod-price').textContent = displayPrice;
   document.getElementById('policy-agree').checked = false;
   document.getElementById('cust-name').value='';
@@ -4565,6 +4610,22 @@ function exitAdmin(){
   }
 }
 function startClock(){function tick(){document.getElementById('admin-clock').textContent=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',hour12:true});}tick();setInterval(tick,1000);}
+async function syncAllToFirestore() {
+  const btn = document.getElementById('sync-fb-btn');
+  if(!window._fbProductFn){ alert('Firebase not ready. Try again in a moment.'); return; }
+  if(!confirm('This will push all current products to Firestore. Continue?')) return;
+  btn.textContent = '☁ Syncing…'; btn.disabled = true;
+  const products = getProducts();
+  try {
+    await window._fbProductFn.saveAllProductsToFirestore(products);
+    btn.textContent = '✓ Synced!';
+    setTimeout(()=>{ btn.textContent='☁ Sync to Firestore'; btn.disabled=false; }, 3000);
+  } catch(e) {
+    btn.textContent = '✗ Failed'; btn.disabled = false;
+    alert('Sync failed: ' + e.message);
+  }
+}
+
 function updateStats(){
   const p=getProducts();
   document.getElementById('stat-total').textContent=p.length;
@@ -4579,7 +4640,7 @@ function renderAdminTable(){
   document.getElementById('admin-table-body').innerHTML=filtered.map(p=>{
     const disc=calcDiscount(p.price,p.originalPrice);
     return `<tr>
-      <td><img src="data:image/jpeg;base64,${p.img}" class="prod-thumb" alt="${p.name}"/></td>
+      <td><img src="${p.imgUrl||('data:image/jpeg;base64,'+p.img)}" class="prod-thumb" alt="${p.name}"/></td>
       <td style="font-size:11px;color:var(--text-light);">JJ-${String(p.id).padStart(3,'0')}</td>
       <td><strong>${p.name}</strong></td>
       <td><span class="badge-cat">${p.category}</span></td>
@@ -4598,6 +4659,7 @@ function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=ge
 let editingId=null;
 function openAddProduct(){
   editingId=null;
+  window._pendingImgBlob = null;
   document.getElementById('admin-modal-title').textContent='Add New Product';
   ['ap-name','ap-price','ap-original','ap-badge'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ap-category').value='Necklace';
@@ -4609,6 +4671,7 @@ function openAddProduct(){
 }
 function editProduct(id){
   const p=getProducts().find(x=>x.id===id);if(!p)return;editingId=id;
+  window._pendingImgBlob = null;
   document.getElementById('admin-modal-title').textContent='Edit Product';
   document.getElementById('ap-name').value=p.name;
   document.getElementById('ap-category').value=p.category;
@@ -4619,39 +4682,122 @@ function editProduct(id){
   document.getElementById('ap-available').value=p.available===false?'false':'true';
   document.getElementById('ap-image').value='';
   const prev=document.getElementById('ap-img-preview');
-  prev.src='data:image/jpeg;base64,'+p.img;prev.style.display='block';
+  prev.src=p.imgUrl||('data:image/jpeg;base64,'+p.img);prev.style.display='block';
   document.getElementById('adminProductModal').classList.add('active');
 }
 function closeAdminModal(){document.getElementById('adminProductModal').classList.remove('active');}
-function previewAdminImg(){
-  const file=document.getElementById('ap-image').files[0];if(!file)return;
-  const r=new FileReader();r.onload=e=>{const prev=document.getElementById('ap-img-preview');prev.src=e.target.result;prev.style.display='block';};r.readAsDataURL(file);
+
+// ── Image compression: resize to max 800x800, quality 0.82, output JPEG blob ──
+function compressImage(file, maxSize, quality, callback) {
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = function() {
+    URL.revokeObjectURL(url);
+    var w = img.width, h = img.height;
+    if(w > maxSize || h > maxSize) {
+      if(w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+      else { w = Math.round(w * maxSize / h); h = maxSize; }
+    }
+    var canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    canvas.toBlob(function(blob){ callback(blob); }, 'image/jpeg', quality);
+  };
+  img.src = url;
 }
-function saveProduct(){
-  const name=document.getElementById('ap-name').value.trim();
-  const category=document.getElementById('ap-category').value;
-  const price=document.getElementById('ap-price').value.trim();
-  const originalPrice=document.getElementById('ap-original').value.trim();
-  const badge=document.getElementById('ap-badge').value.trim();
-  const badgeColor=document.getElementById('ap-badge-color').value;
-  const available=document.getElementById('ap-available').value==='true';
-  const file=document.getElementById('ap-image').files[0];
-  if(!name){alert('Please enter a product name.');return;}
-  const products=getProducts();
-  if(editingId!==null){
-    const p=products.find(x=>x.id===editingId);if(!p)return;
-    Object.assign(p,{name,category,price,originalPrice,badge,badgeColor,available});
-    if(file){const r=new FileReader();r.onload=e=>{p.img=e.target.result.split(',')[1];saveProducts(products);closeAdminModal();renderAdminTable();updateStats();renderProducts();};r.readAsDataURL(file);}
-    else{saveProducts(products);closeAdminModal();renderAdminTable();updateStats();renderProducts();}
-  }else{
-    if(!file){alert('Please upload a product photo.');return;}
-    const r=new FileReader();
-    r.onload=e=>{
-      const newId=Math.max(0,...products.map(x=>x.id))+1;
-      products.push({id:newId,name,category,price,originalPrice,badge,badgeColor,available,img:e.target.result.split(',')[1]});
-      saveProducts(products);closeAdminModal();renderAdminTable();updateStats();renderProducts();
-    };
-    r.readAsDataURL(file);
+
+function previewAdminImg() {
+  const file = document.getElementById('ap-image').files[0];
+  if(!file) return;
+  compressImage(file, 800, 0.82, function(blob) {
+    var prev = document.getElementById('ap-img-preview');
+    prev.src = URL.createObjectURL(blob);
+    prev.style.display = 'block';
+    // Store compressed blob for upload
+    window._pendingImgBlob = blob;
+  });
+}
+
+function saveProduct() {
+  const name = document.getElementById('ap-name').value.trim();
+  const category = document.getElementById('ap-category').value;
+  const price = document.getElementById('ap-price').value.trim();
+  const originalPrice = document.getElementById('ap-original').value.trim();
+  const badge = document.getElementById('ap-badge').value.trim();
+  const badgeColor = document.getElementById('ap-badge-color').value;
+  const available = document.getElementById('ap-available').value === 'true';
+  const file = document.getElementById('ap-image').files[0];
+  if(!name) { alert('Please enter a product name.'); return; }
+
+  const products = getProducts();
+  const saveBtn = document.querySelector('#adminProductModal .btn-gold');
+  if(saveBtn) { saveBtn.textContent = 'Saving…'; saveBtn.disabled = true; }
+
+  function finishSave(productData, productList) {
+    saveProducts(productList);
+    closeAdminModal();
+    renderAdminTable();
+    updateStats();
+    renderProducts();
+    if(saveBtn) { saveBtn.textContent = 'Save Product'; saveBtn.disabled = false; }
+    window._pendingImgBlob = null;
+  }
+
+  async function doSave(blob) {
+    if(editingId !== null) {
+      // ── EDIT existing product ──
+      const p = products.find(x => x.id === editingId);
+      if(!p) return;
+      Object.assign(p, {name, category, price, originalPrice, badge, badgeColor, available});
+      if(blob) {
+        // Upload new image to Storage
+        if(window._fbStorageFn) {
+          const url = await window._fbStorageFn.uploadProductImage(p.id, blob);
+          if(url) { p.imgUrl = url; delete p.img; } // use URL, drop old base64
+          else {
+            // Storage failed — fallback: store as base64
+            await new Promise(res => {
+              var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+            });
+          }
+        } else {
+          await new Promise(res => {
+            var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+          });
+        }
+      }
+      finishSave(p, products);
+    } else {
+      // ── ADD new product ──
+      if(!blob && !file) { alert('Please upload a product photo.'); if(saveBtn){saveBtn.textContent='Save Product';saveBtn.disabled=false;} return; }
+      const newId = Math.max(0, ...products.map(x => x.id)) + 1;
+      const newProduct = {id: newId, name, category, price, originalPrice, badge, badgeColor, available};
+      if(blob && window._fbStorageFn) {
+        const url = await window._fbStorageFn.uploadProductImage(newId, blob);
+        if(url) { newProduct.imgUrl = url; }
+        else {
+          // Storage failed — fallback base64
+          await new Promise(res => {
+            var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+          });
+        }
+      } else if(file) {
+        await new Promise(res => {
+          var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+        });
+      }
+      products.push(newProduct);
+      finishSave(newProduct, products);
+    }
+  }
+
+  // Use pre-compressed blob if available, else compress now, else proceed without image
+  if(window._pendingImgBlob) {
+    doSave(window._pendingImgBlob);
+  } else if(file) {
+    compressImage(file, 800, 0.82, function(blob){ doSave(blob); });
+  } else {
+    doSave(null);
   }
 }
 document.getElementById('adminProductModal').addEventListener('click',function(e){if(e.target===this)closeAdminModal();});
