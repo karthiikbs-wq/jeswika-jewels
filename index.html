@@ -171,15 +171,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const current = localStorage.getItem('jj_products');
     const updated = JSON.stringify(prods);
     localStorage.setItem('jj_products', updated);
-    if (typeof renderProducts === 'function') renderProducts();
-    if (typeof updateStats === 'function') updateStats();
-    if (typeof renderAdminTable === 'function') renderAdminTable();
-    // Show toast on other devices (not on first load)
-    if (!_firstLoad && current !== updated) {
-      showSyncToast();
-    }
-    _firstLoad = false;
+    // Use setTimeout to ensure page scripts are loaded before calling render
+    setTimeout(() => {
+      if (typeof renderProducts === 'function') renderProducts();
+      if (typeof updateStats === 'function') updateStats();
+      if (typeof renderAdminTable === 'function') renderAdminTable();
+      // Show toast only on other devices (not first load, and only if data changed)
+      if (!_firstLoad && current !== updated) {
+        if (typeof showSyncToast === 'function') showSyncToast();
+      }
+      _firstLoad = false;
+    }, 100);
   }, (err) => { console.warn('Firestore listener failed:', err); });
+
+  // Fallback: poll Firestore every 30s in case realtime listener drops
+  setInterval(async () => {
+    try {
+      const prods = await loadProductsFromFirestore();
+      if (prods) {
+        const current = localStorage.getItem('jj_products');
+        const updated = JSON.stringify(prods);
+        if (current !== updated) {
+          localStorage.setItem('jj_products', updated);
+          setTimeout(() => {
+            if (typeof renderProducts === 'function') renderProducts();
+            if (typeof showSyncToast === 'function') showSyncToast();
+          }, 100);
+        }
+      }
+    } catch(e) {}
+  }, 30000);
 
   // Dispatch event so doLogin() knows Firebase is ready
   window.dispatchEvent(new Event('firebaseReady'));
@@ -398,7 +419,7 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .policy-card ul li.warn::before{content:'⚠';color:#FF9800;}
 
 /* GALLERY / CAROUSEL */
-.carousel-wrapper{position:relative;padding:0 46px;}
+.carousel-wrapper{position:relative;padding:0 30px;}
 .gallery-track{display:flex;gap:8px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:8px 0 16px;}
 .gallery-track::-webkit-scrollbar{display:none;}
 .gallery-cell{flex:0 0 calc(25% - 6px);aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;border-radius:2px;}
@@ -409,7 +430,7 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .gallery-overlay-name{color:white;font-size:13px;font-family:'Playfair Display',serif;text-align:center;padding:0 8px;}
 .gallery-overlay-btn{background:var(--white);color:var(--gold);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px 18px;border:none;cursor:pointer;font-family:'Jost',sans-serif;font-weight:500;transition:all .2s;}
 .gallery-overlay-btn:hover{background:var(--gold);color:white;}
-.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:#B8860B;color:#ffffff;border:2px solid #ffffff;width:44px;height:44px;border-radius:50%;font-size:20px;font-weight:900;cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 3px 14px rgba(0,0,0,0.4);transition:background .2s;}
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(184,134,11,0.85);color:#fff;border:none;width:28px;height:28px;border-radius:50%;font-size:14px;font-weight:bold;cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:background .2s;}
 .carousel-btn:hover{background:var(--gold);}
 .carousel-btn-left{left:0;}
 .carousel-btn-right{right:0;}
@@ -624,7 +645,9 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .hero-trust{gap:16px;margin-top:28px;padding-top:20px;}
   .section{padding:48px 20px;}
   .section-header{margin-bottom:32px;}
-  .gallery-cell{flex:0 0 calc(50% - 4px);}
+  .gallery-cell{flex:0 0 calc(48% - 4px);aspect-ratio:0.85;}
+  .carousel-wrapper{padding:0 26px;}
+  .carousel-btn{width:24px;height:24px;font-size:11px;}
   .how-grid{grid-template-columns:1fr;}
   .testi-grid{grid-template-columns:1fr;}
   .footer-grid{grid-template-columns:1fr;}
@@ -3570,7 +3593,6 @@ function getShippingInfo(pin) {
 function getProducts(){try{const s=localStorage.getItem('jj_products');return s?JSON.parse(s):DEFAULT_PRODUCTS;}catch(e){return DEFAULT_PRODUCTS;}}
 function saveProducts(p){
   try{localStorage.setItem('jj_products',JSON.stringify(p));}catch(e){}
-  // Individual product saves handle Firestore sync directly (faster than saving all)
 }
 
 function calcDiscount(price, original) {
