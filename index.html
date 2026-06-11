@@ -3690,9 +3690,21 @@ function renderCartItems(){
 }
 
 function removeFromCart(idx){
+  var removed = cart[idx];
   cart.splice(idx,1);
   updateCartBadge();
   renderCartItems();
+  // Sync the product card button back to "Add to Cart"
+  if(removed){
+    var cardBtn = document.getElementById('cart-btn-'+removed.id);
+    if(cardBtn){ cardBtn.textContent='🛍 Add to Cart'; cardBtn.style.background='var(--cream)'; cardBtn.style.color='var(--gold)'; }
+    // Also sync product detail page button if open for same product
+    if(currentPDProduct && String(currentPDProduct.id)===String(removed.id)){
+      var pdBtn = document.getElementById('pdCartBtn');
+      if(pdBtn){ pdBtn.textContent='🛍 Add to Cart'; pdBtn.className='pd-btn-cart'; }
+      document.getElementById('pdAddedMsg').style.display='none';
+    }
+  }
 }
 
 function checkoutCart(){
