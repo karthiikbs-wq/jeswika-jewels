@@ -39,7 +39,7 @@
   // Load products from Firestore (called on page load)
   async function loadProductsFromFirestore() {
     try {
-      const snap = await getDocs(query(collection(db, 'products'), orderBy('id')));
+      const snap = await getDocs(collection(db, 'products'));
       if (!snap.empty) {
         const prods = snap.docs.map(d => d.data());
         localStorage.setItem('jj_products', JSON.stringify(prods));
@@ -133,14 +133,19 @@
   // Watch auth state
   onAuthStateChanged(auth, (user) => {
     window._fbUser = user;
+    // Only auto-open admin panel if user is already in the admin flow
+    // (not on regular page load — owner must always click login)
     if(user) {
-      var loginEl = document.getElementById('admin-login');
       var panelEl = document.getElementById('admin-panel');
-      if(loginEl) loginEl.classList.remove('active');
-      if(panelEl) { panelEl.style.display='block'; document.body.style.overflow='hidden'; }
-      if(typeof renderAdminTable === 'function') renderAdminTable();
-      if(typeof updateStats === 'function') updateStats();
-      if(typeof startClock === 'function') startClock();
+      var loginEl = document.getElementById('admin-login');
+      // Only open panel if login screen was active (user just logged in)
+      if(loginEl && loginEl.classList.contains('active')) {
+        loginEl.classList.remove('active');
+        if(panelEl) { panelEl.style.display='block'; document.body.style.overflow='hidden'; }
+        if(typeof renderAdminTable === 'function') renderAdminTable();
+        if(typeof updateStats === 'function') updateStats();
+        if(typeof startClock === 'function') startClock();
+      }
     }
   });
 
@@ -3390,7 +3395,7 @@ var qrcode = function() {
       </div>
       <div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--gold-border);border-radius:4px;">
       <table class="admin-table">
-        <thead><tr><th>Photo</th><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>#</th><th>Photo</th><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="admin-table-body"></tbody>
       </table>
       </div>
@@ -3403,7 +3408,10 @@ var qrcode = function() {
   <div class="admin-modal">
     <div class="admin-modal-header"><h3 id="admin-modal-title">Add New Product</h3><button class="admin-modal-close" onclick="closeAdminModal()">✕</button></div>
     <div class="admin-modal-body">
-      <div class="admin-form-group"><label>Product Name *</label><input type="text" id="ap-name" placeholder="e.g. Ruby Jhumka Earrings"/></div>
+      <div class="form-row-admin">
+        <div class="admin-form-group"><label>Product Name *</label><input type="text" id="ap-name" placeholder="e.g. Ruby Jhumka Earrings"/></div>
+        <div class="admin-form-group"><label>Display Position #</label><input type="number" id="ap-position" placeholder="e.g. 1" min="1" style="width:100%;"/></div>
+      </div>
       <div class="admin-form-group"><label>Category *</label>
         <select id="ap-category">
           <option>Necklace</option><option>Pearl Haram</option><option>Choker</option>
@@ -3488,9 +3496,13 @@ function renderProducts() {
   const products = getProducts();
   const grid = document.getElementById('products-grid');
   const filtered = activeFilter === 'All' ? products : products.filter(p => p.category === activeFilter);
-  const avail = filtered.filter(p => p.available !== false);
-  const sold = filtered.filter(p => p.available === false);
-  const sorted = [...avail,...sold];
+  // Sort all products by position (if set), then by id — owner decides order
+  const sortByPos = (a, b) => {
+    const pa = a.position != null ? a.position : 9999;
+    const pb = b.position != null ? b.position : 9999;
+    return pa !== pb ? pa - pb : a.id - b.id;
+  };
+  const sorted = filtered.sort(sortByPos);
   if (!sorted.length) { grid.innerHTML = '<div class="no-products">No products in this category yet.</div>'; return; }
   grid.innerHTML = sorted.map(p => {
     const disc = calcDiscount(p.price, p.originalPrice);
@@ -4605,8 +4617,16 @@ function doLogin(){
 function exitAdmin(){
   document.getElementById('admin-panel').style.display='none';
   document.body.style.overflow='';
+  // Sign out Firebase session so user must re-login next time
   if(window._fbAuth && window._fbFunctions) {
-    window._fbFunctions.signOut(window._fbAuth).catch(function(){});
+    window._fbFunctions.signOut(window._fbAuth).then(function(){
+      // Reset login button text after sign out
+      var loginBtn = document.getElementById('admin-login-btn');
+      if(loginBtn){ loginBtn.textContent = 'Login to Admin Panel'; loginBtn.disabled = false; }
+      var errorEl = document.getElementById('login-error');
+      if(errorEl){ errorEl.style.display='none'; }
+      document.getElementById('admin-password').value = '';
+    }).catch(function(){});
   }
 }
 function startClock(){function tick(){document.getElementById('admin-clock').textContent=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',hour12:true});}tick();setInterval(tick,1000);}
@@ -4640,6 +4660,7 @@ function renderAdminTable(){
   document.getElementById('admin-table-body').innerHTML=filtered.map(p=>{
     const disc=calcDiscount(p.price,p.originalPrice);
     return `<tr>
+      <td style="text-align:center;font-size:13px;font-weight:600;color:var(--gold);min-width:32px;">${p.position != null ? p.position : '—'}</td>
       <td><img src="${p.imgUrl||('data:image/jpeg;base64,'+p.img)}" class="prod-thumb" alt="${p.name}"/></td>
       <td style="font-size:11px;color:var(--text-light);">JJ-${String(p.id).padStart(3,'0')}</td>
       <td><strong>${p.name}</strong></td>
@@ -4667,6 +4688,10 @@ function openAddProduct(){
   document.getElementById('ap-available').value='true';
   document.getElementById('ap-image').value='';
   document.getElementById('ap-img-preview').style.display='none';
+  // Auto-suggest next position
+  const products = getProducts();
+  const maxPos = products.reduce((m,p)=>Math.max(m, p.position||0), 0);
+  document.getElementById('ap-position').value = maxPos + 1;
   document.getElementById('adminProductModal').classList.add('active');
 }
 function editProduct(id){
@@ -4680,6 +4705,7 @@ function editProduct(id){
   document.getElementById('ap-badge').value=p.badge||'';
   document.getElementById('ap-badge-color').value=p.badgeColor||'';
   document.getElementById('ap-available').value=p.available===false?'false':'true';
+  document.getElementById('ap-position').value=p.position||'';
   document.getElementById('ap-image').value='';
   const prev=document.getElementById('ap-img-preview');
   prev.src=p.imgUrl||('data:image/jpeg;base64,'+p.img);prev.style.display='block';
@@ -4726,6 +4752,8 @@ function saveProduct() {
   const badge = document.getElementById('ap-badge').value.trim();
   const badgeColor = document.getElementById('ap-badge-color').value;
   const available = document.getElementById('ap-available').value === 'true';
+  const positionVal = document.getElementById('ap-position').value.trim();
+  const position = positionVal ? parseInt(positionVal) : null;
   const file = document.getElementById('ap-image').files[0];
   if(!name) { alert('Please enter a product name.'); return; }
 
@@ -4748,7 +4776,7 @@ function saveProduct() {
       // ── EDIT existing product ──
       const p = products.find(x => x.id === editingId);
       if(!p) return;
-      Object.assign(p, {name, category, price, originalPrice, badge, badgeColor, available});
+      Object.assign(p, {name, category, price, originalPrice, badge, badgeColor, available, position});
       if(blob) {
         // Upload new image to Storage
         if(window._fbStorageFn) {
@@ -4771,7 +4799,7 @@ function saveProduct() {
       // ── ADD new product ──
       if(!blob && !file) { alert('Please upload a product photo.'); if(saveBtn){saveBtn.textContent='Save Product';saveBtn.disabled=false;} return; }
       const newId = Math.max(0, ...products.map(x => x.id)) + 1;
-      const newProduct = {id: newId, name, category, price, originalPrice, badge, badgeColor, available};
+      const newProduct = {id: newId, name, category, price, originalPrice, badge, badgeColor, available, position};
       if(blob && window._fbStorageFn) {
         const url = await window._fbStorageFn.uploadProductImage(newId, blob);
         if(url) { newProduct.imgUrl = url; }
