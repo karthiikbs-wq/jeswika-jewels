@@ -455,7 +455,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .admin-section{background:var(--white);border:1px solid var(--gold-border);margin-bottom:28px;}
 .admin-section-header{padding:16px 22px;border-bottom:1px solid var(--gold-border);display:flex;align-items:center;justify-content:space-between;background:#FDFAF4;}
 .admin-section-header h2{font-family:'Playfair Display',serif;font-size:19px;color:var(--text);}
-.admin-table{width:100%;border-collapse:collapse;}
+.admin-table{width:100%;border-collapse:collapse;min-width:600px;}
 .admin-table th{text-align:left;padding:11px 14px;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-light);background:#FDFAF4;border-bottom:1px solid var(--gold-border);}
 .admin-table td{padding:12px 14px;border-bottom:1px solid #F0EDE6;vertical-align:middle;font-size:14px;}
 .admin-table tr:last-child td{border-bottom:none;}
@@ -562,6 +562,16 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   #prod-grid{grid-template-columns:repeat(2,1fr) !important;}
   .prod-name{font-size:13px;}
   .prod-price{font-size:15px;}
+  /* Admin table mobile */
+  .admin-table{min-width:640px;}
+  .admin-table td{padding:10px 8px;font-size:13px;}
+  .admin-table th{padding:8px;font-size:9px;}
+  .action-btns{flex-direction:column;gap:4px;min-width:80px;}
+  .btn-edit,.btn-toggle,.btn-delete{width:100%;text-align:center;padding:6px 8px;font-size:10px;}
+  .prod-thumb{width:44px !important;height:44px !important;}
+  .admin-content{padding:16px 12px;}
+  .admin-header{flex-direction:column;align-items:flex-start;gap:10px;}
+  .admin-header button{width:100%;}
 }
 
 /* ===== PRODUCT DETAIL MODAL ===== */
@@ -3340,10 +3350,12 @@ var qrcode = function() {
         <h2>All Products</h2>
         <input type="text" id="admin-search" placeholder="Search products..." style="padding:8px 12px;border:1px solid var(--gold-border);font-family:'Jost',sans-serif;font-size:13px;width:200px;outline:none;" oninput="renderAdminTable()"/>
       </div>
+      <div style="width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--gold-border);border-radius:4px;">
       <table class="admin-table">
         <thead><tr><th>Photo</th><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="admin-table-body"></tbody>
       </table>
+      </div>
     </div>
   </div>
 </div>
@@ -3464,7 +3476,7 @@ function renderProducts() {
         <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''} style="display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;min-height:46px;${p.available===false?'opacity:0.5;cursor:not-allowed;':''}">
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
-        <button class="prod-buy" data-pid="${p.id}" onclick="event.stopPropagation();if(this.dataset.pid&&this.getAttribute('data-avail')!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
+        <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''>
           ${p.available===false?'Sold Out':'Buy Now'}
         </button>
       </div>
@@ -3606,16 +3618,36 @@ function openProductDetail(pid){
   if(origNum && origNum>priceNum) pricingHtml += '<span class="pd-orig">₹'+origNum.toLocaleString('en-IN')+'</span>';
   if(disc>0) pricingHtml += '<span class="pd-disc">'+disc+'% OFF</span>';
   document.getElementById('pdPricing').innerHTML = pricingHtml;
-  // cart btn — check if already in cart
-  var alreadyInCart = cart.some(function(c){return String(c.id)===String(p.id);});
-  document.getElementById('pdAddedMsg').style.display = alreadyInCart ? 'block' : 'none';
-  var btn = document.getElementById('pdCartBtn');
-  if(alreadyInCart){
-    btn.textContent = '🛒 View Cart ➜';
-    btn.className = 'pd-btn-cart in-cart';
+
+  var cartBtn = document.getElementById('pdCartBtn');
+  var buyBtn = document.getElementById('pdBuyBtn') || document.querySelector('.pd-btn-buy');
+  var addedMsg = document.getElementById('pdAddedMsg');
+
+  if(p.available === false){
+    // ── SOLD OUT state ──
+    addedMsg.style.display = 'none';
+    cartBtn.textContent = '✕ Sold Out';
+    cartBtn.className = 'pd-btn-cart';
+    cartBtn.disabled = true;
+    cartBtn.style.opacity = '0.5';
+    cartBtn.style.cursor = 'not-allowed';
+    if(buyBtn){ buyBtn.textContent = 'Sold Out'; buyBtn.disabled = true; buyBtn.style.opacity = '0.5'; buyBtn.style.cursor = 'not-allowed'; }
   } else {
-    btn.textContent = '🛍 Add to Cart';
-    btn.className = 'pd-btn-cart';
+    // ── AVAILABLE state ──
+    cartBtn.disabled = false;
+    cartBtn.style.opacity = '';
+    cartBtn.style.cursor = '';
+    if(buyBtn){ buyBtn.disabled = false; buyBtn.style.opacity = ''; buyBtn.style.cursor = ''; buyBtn.textContent = 'Buy Now ➜'; }
+    // Check if already in cart
+    var alreadyInCart = cart.some(function(c){return String(c.id)===String(p.id);});
+    addedMsg.style.display = alreadyInCart ? 'block' : 'none';
+    if(alreadyInCart){
+      cartBtn.textContent = '🛒 View Cart ➜';
+      cartBtn.className = 'pd-btn-cart in-cart';
+    } else {
+      cartBtn.textContent = '🛍 Add to Cart';
+      cartBtn.className = 'pd-btn-cart';
+    }
   }
   document.getElementById('pdOverlay').classList.add('active');
   document.body.style.overflow = 'hidden';
