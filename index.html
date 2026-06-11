@@ -398,7 +398,7 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .policy-card ul li.warn::before{content:'⚠';color:#FF9800;}
 
 /* GALLERY / CAROUSEL */
-.carousel-wrapper{position:relative;overflow:hidden;padding:0 40px;}
+.carousel-wrapper{position:relative;padding:0 46px;}
 .gallery-track{display:flex;gap:8px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:8px 0 16px;}
 .gallery-track::-webkit-scrollbar{display:none;}
 .gallery-cell{flex:0 0 calc(25% - 6px);aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;border-radius:2px;}
@@ -409,7 +409,7 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .gallery-overlay-name{color:white;font-size:13px;font-family:'Playfair Display',serif;text-align:center;padding:0 8px;}
 .gallery-overlay-btn{background:var(--white);color:var(--gold);font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:7px 18px;border:none;cursor:pointer;font-family:'Jost',sans-serif;font-weight:500;transition:all .2s;}
 .gallery-overlay-btn:hover{background:var(--gold);color:white;}
-.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:var(--gold-mid);color:white;border:none;width:34px;height:34px;border-radius:50%;font-size:22px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,0.15);transition:background .2s;}
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);background:#B8860B;color:#ffffff;border:2px solid #ffffff;width:44px;height:44px;border-radius:50%;font-size:20px;font-weight:900;cursor:pointer;z-index:20;display:flex;align-items:center;justify-content:center;line-height:1;box-shadow:0 3px 14px rgba(0,0,0,0.4);transition:background .2s;}
 .carousel-btn:hover{background:var(--gold);}
 .carousel-btn-left{left:0;}
 .carousel-btn-right{right:0;}
@@ -3226,9 +3226,9 @@ var qrcode = function() {
 <section class="section" id="gallery">
   <div class="section-head"><p class="eyebrow">Explore More</p><h2 class="section-title">You May Also <em>Like</em></h2><div class="ornament-line"><div class="ornament-line-dot"></div></div></div>
   <div class="carousel-wrapper">
-    <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="Previous">&#8249;</button>
+    <button class="carousel-btn carousel-btn-left" onclick="scrollCarousel(-1)" aria-label="Previous">&#10094;</button>
     <div class="gallery-track" id="gallery-grid"></div>
-    <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="Next">&#8250;</button>
+    <button class="carousel-btn carousel-btn-right" onclick="scrollCarousel(1)" aria-label="Next">&#10095;</button>
   </div>
 </section>
 
@@ -3503,8 +3503,8 @@ var qrcode = function() {
           <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;margin:0 0 16px;color:var(--text);">Manage Categories</h3>
           <div id="cat-list" style="margin-bottom:14px;"></div>
           <div style="display:flex;gap:8px;margin-bottom:16px;">
-            <input id="cat-new-input" type="text" placeholder="New category name" onkeydown="if(event.key==='Enter')addCategory()" style="flex:1;padding:8px 10px;border:1px solid #B8860B;font-family:'Jost',sans-serif;font-size:13px;outline:none;border-radius:3px;"/>
-            <button onclick="addCategory()" title="Save category" style="background:var(--gold-mid);color:#fff;border:none;padding:8px 16px;cursor:pointer;font-family:'Jost',sans-serif;font-size:16px;border-radius:3px;line-height:1;">✓</button>
+            <input id="cat-new-input" type="text" placeholder="New category name" onkeydown="if(event.key==='Enter')addCategory()" style="flex:1;padding:10px 12px;border:1.5px solid #B8860B;font-family:'Jost',sans-serif;font-size:13px;outline:none;border-radius:3px;"/>
+            <button onclick="addCategory()" style="background:#B8860B;color:#fff;border:none;padding:10px 18px;cursor:pointer;font-family:'Jost',sans-serif;font-size:13px;font-weight:600;border-radius:3px;letter-spacing:1px;white-space:nowrap;">+ ADD</button>
           </div>
           <button onclick="document.getElementById('cat-modal').style.display='none'" style="width:100%;background:none;border:1px solid #ccc;padding:9px;cursor:pointer;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;">Close</button>
         </div>
@@ -3570,8 +3570,7 @@ function getShippingInfo(pin) {
 function getProducts(){try{const s=localStorage.getItem('jj_products');return s?JSON.parse(s):DEFAULT_PRODUCTS;}catch(e){return DEFAULT_PRODUCTS;}}
 function saveProducts(p){
   try{localStorage.setItem('jj_products',JSON.stringify(p));}catch(e){}
-  // Sync to Firestore if available
-  if(window._fbProductFn) window._fbProductFn.saveAllProductsToFirestore(p).catch(()=>{});
+  // Individual product saves handle Firestore sync directly (faster than saving all)
 }
 
 function calcDiscount(price, original) {
@@ -4833,11 +4832,14 @@ function renderCatList(){
 function addCategory(){
   const inp=document.getElementById('cat-new-input');
   const name=(inp.value||'').trim();
-  if(!name)return;
+  if(!name){inp.focus();return;}
   const cats=getCategories();
   if(cats.includes(name)){alert('Category already exists');return;}
   cats.push(name);saveCategories(cats);
   inp.value='';renderCatList();populateCategoryDropdown();
+  // Flash success on input
+  inp.placeholder='✓ Category added!';
+  setTimeout(()=>{inp.placeholder='New category name';},1500);
 }
 function deleteCategory(idx){
   const cats=getCategories();
@@ -4872,7 +4874,7 @@ function renderAdminTable(){
     </tr>`;
   }).join('');
 }
-function toggleAvail(id){const p=getProducts();const x=p.find(i=>i.id===id);if(x){x.available=x.available===false;saveProducts(p);renderAdminTable();updateStats();renderProducts();}}
+function toggleAvail(id){const p=getProducts();const x=p.find(i=>i.id===id);if(x){x.available=x.available===false;saveProducts(p);if(window._fbProductFn)window._fbProductFn.saveProductToFirestore(x).catch(()=>{});renderAdminTable();updateStats();renderProducts();}}
 function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=getProducts().filter(x=>x.id!==id);saveProducts(p);if(window._fbProductFn)window._fbProductFn.deleteProductFromFirestore(id).catch(()=>{});renderAdminTable();updateStats();renderProducts();}
 let editingId=null;
 function openAddProduct(){
@@ -4984,6 +4986,10 @@ function saveProduct() {
 
   function finishSave(productData, productList) {
     saveProducts(productList);
+    // Directly save only this product to Firestore immediately (fast, no need for Sync button)
+    if(window._fbProductFn) {
+      window._fbProductFn.saveProductToFirestore(productData).catch(()=>{});
+    }
     closeAdminModal();
     renderAdminTable();
     updateStats();
