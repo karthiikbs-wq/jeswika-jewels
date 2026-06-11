@@ -543,8 +543,9 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .pd-img-col-mobile{display:block;margin:0 0 4px;}
   #pdImgMobile{display:block !important;}
   .pd-info-col{padding:16px;order:0;}
-  .pd-actions{gap:8px;margin-top:12px;}
-  .pd-btn-cart,.pd-btn-buy{padding:14px;font-size:12px;min-height:48px;}
+  .pd-actions{gap:8px;margin-top:12px;position:fixed;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:12px 16px 20px;box-shadow:0 -4px 16px rgba(0,0,0,0.1);flex-direction:row;}
+  .pd-btn-cart,.pd-btn-buy{padding:14px;font-size:12px;min-height:48px;flex:1;}
+  .pd-page{padding-bottom:120px;}
 }
 
 /* ===== CART ICON IN NAV ===== */
