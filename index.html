@@ -379,6 +379,8 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .sold-badge-abs{position:absolute;bottom:0;left:0;right:0;background:rgba(220,38,38,0.9);color:white;font-size:12px;letter-spacing:3px;text-transform:uppercase;padding:8px;text-align:center;font-weight:500;}
 
 .prod-img{aspect-ratio:1;overflow:hidden;border-bottom:1px solid var(--gold-border);position:relative;}
+.share-btn-img{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.18);transition:all .2s;z-index:5;padding:0;}
+.share-btn-img:hover{background:#B8860B;color:#fff;transform:scale(1.1);}
 .prod-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
 .prod-card:hover .prod-img img{transform:scale(1.06);}
 .prod-body{padding:14px;display:flex;flex-direction:column;flex:1;}
@@ -742,7 +744,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .pd-img-col-mobile{display:block;margin:0 0 4px;}
   #pdImgMobile{display:block !important;}
   .pd-info-col{padding:16px;order:0;}
-  .pd-actions{gap:8px;margin-top:0;position:sticky;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:10px 16px 16px;box-shadow:0 -4px 16px rgba(0,0,0,0.08);flex-direction:row;}
+  .pd-actions{gap:8px;margin-top:0;position:sticky;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:12px 16px 20px;box-shadow:0 -4px 16px rgba(0,0,0,0.08);flex-direction:row;}
   .pd-btn-cart,.pd-btn-buy{padding:14px;font-size:12px;min-height:48px;flex:1;}
   .pd-page{padding-bottom:120px;}
   .pd-modal-scroll{padding:0 16px 8px;}
@@ -3625,7 +3627,12 @@ function renderProducts() {
       ${p.available===false ? '<div class="sold-overlay"><div class="sold-badge-abs">Sold Out</div></div>' : ''}
       ${disc>0 && p.available!==false ? `<div class="disc-badge">${disc}%<br>OFF</div>` : ''}
       ${p.badge && p.badgeColor ? `<div class="badge-corner ${badgeClass}">${p.badge}</div>` : ''}
-      <div class="prod-img"><img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/></div>
+      <div class="prod-img">
+        <img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/>
+        <button onclick="event.stopPropagation();shareProduct('${p.id}','${p.name.replace(/'/g,"\\'")}');" title="Share" class="share-btn-img">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+      </div>
       <div class="prod-body">
         <div class="prod-id">ID: TK-${String(p.id).padStart(3,'0')}</div>
         <div class="prod-badge-cat">${p.category}</div>
@@ -3639,8 +3646,8 @@ function renderProducts() {
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
         <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
-          ${p.available===false?'Sold Out':'Buy Now'}
-        </button>
+            ${p.available===false?'Sold Out':'Buy Now'}
+          </button>
       </div>
     </div>`;
   }).join('');
@@ -5129,8 +5136,11 @@ updateCartBadge();
         <div class="pd-name" id="pdName"></div>
         <div class="pd-pricing" id="pdPricing"></div>
         <div class="pd-id" id="pdIdLabel"></div>
-        <div class="pd-img-col-mobile">
+        <div class="pd-img-col-mobile" style="position:relative;">
           <img class="pd-main-img" id="pdImgMobile" src="" alt="" onclick="toggleZoom(this)" style="width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in;border:1px solid var(--gold-border);"/>
+          <button onclick="shareProduct(window._currentPD && window._currentPD.id, window._currentPD && window._currentPD.name)" title="Share" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
         </div>
         <hr class="pd-divider"/>
         <p class="pd-desc">Handcrafted South Indian jewellery. Ideal for weddings, pujas, and special occasions. Lightweight and comfortable to wear.</p>
@@ -5156,6 +5166,52 @@ function showSyncToast() {
   if (!t) return;
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+function shareProduct(id, name) {
+  const url = 'https://jeswikajewels.com/?product=' + id;
+  const text = '✨ Check out this beautiful jewellery from Jeswika Jewels!\n\n' + (name || '') + '\n\n' + url;
+  if (navigator.share) {
+    navigator.share({ title: name || 'Jeswika Jewels', text: '✨ ' + (name||'') + ' — Beautiful South Indian Jewellery', url: url })
+      .catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      showCopyToast();
+    }).catch(() => {
+      prompt('Copy this link:', url);
+    });
+  }
+}
+
+// Auto-open product if ?product= is in URL (from share link)
+function checkProductUrlParam() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get('product');
+    if (pid && typeof openProductDetail === 'function') {
+      // Wait for products to load from Firestore first
+      setTimeout(() => {
+        const prods = getProducts();
+        const found = prods.find(p => String(p.id) === String(pid));
+        if (found) openProductDetail(pid);
+      }, 1500);
+    }
+  } catch(e) {}
+}
+// Run after page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', checkProductUrlParam);
+} else {
+  setTimeout(checkProductUrlParam, 500);
+}
+
+function showCopyToast() {
+  const t = document.getElementById('sync-toast');
+  if (!t) return;
+  const orig = t.textContent;
+  t.textContent = '🔗 Link copied to clipboard!';
+  t.classList.add('show');
+  setTimeout(() => { t.classList.remove('show'); t.textContent = orig; }, 2500);
 }
 </script>
 </body>
