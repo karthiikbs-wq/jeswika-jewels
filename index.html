@@ -573,9 +573,9 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .form-group textarea{height:70px;resize:vertical;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .checkbox-group{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;}
-.checkbox-group input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;min-width:22px;border:2px solid var(--gold);border-radius:4px;background:white;cursor:pointer;flex-shrink:0;margin-top:1px;position:relative;transition:all .2s;}
-.checkbox-group input[type=checkbox]:checked{background:var(--gold);border-color:var(--gold);}
-.checkbox-group input[type=checkbox]:checked::after{content:'✓';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;font-size:14px;font-weight:700;line-height:1;}
+.custom-checkbox{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;min-width:24px;border:2.5px solid var(--gold);border-radius:4px;background:white;cursor:pointer;flex-shrink:0;margin-top:1px;transition:all .2s;font-size:15px;color:transparent;}
+.custom-checkbox.checked{background:var(--gold);color:white;}
+.custom-checkbox.checked::after{content:'✓';font-weight:700;}
 .checkbox-group label{font-size:13px;color:var(--text-mid);line-height:1.5;cursor:pointer;}
 .modal-nav{display:flex;gap:10px;padding:12px 16px;border-top:2px solid var(--gold-border);background:var(--white);flex-shrink:0;padding-bottom:max(12px,env(safe-area-inset-bottom,12px));}
 .modal-nav button{flex:1;}
@@ -762,18 +762,18 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .pd-btn-buy{background:var(--gold);color:white;padding:14px 20px;border:1.5px solid var(--gold);font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .2s;min-height:52px;width:100%;}
 .pd-btn-buy:hover{background:var(--gold-dark);}
 .pd-added-msg{font-size:12px;color:green;text-align:center;display:none;}
-@media(min-width:641px){
+@media(min-width:769px){
   .pd-overlay{align-items:center;padding:20px;}
   .pd-modal{border-radius:2px;}
 }
-@media(max-width:640px){
-  .pd-modal{grid-template-columns:1fr;max-height:90vh;}
+@media(max-width:768px){
+  .pd-modal{grid-template-columns:1fr;max-height:92vh;}
   .pd-img-col{display:none;}
   .pd-img-col-mobile{display:block;margin:0 0 4px;}
   #pdImgMobile{display:block !important;}
   .pd-info-col{padding:0;order:0;display:flex;flex-direction:column;overflow:hidden;}
   .pd-modal-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 12px;}
-  .pd-actions{flex-shrink:0;background:var(--white);padding:8px 16px max(12px,env(safe-area-inset-bottom,12px));box-shadow:0 -3px 12px rgba(0,0,0,0.08);gap:6px;flex-direction:column;margin-top:0;}
+  .pd-actions{flex-shrink:0;background:var(--white);padding:6px 16px 10px;box-shadow:0 -3px 12px rgba(0,0,0,0.08);gap:6px;flex-direction:column;margin-top:0;}
   .pd-actions-row1{display:flex;gap:6px;}
   .pd-btn-cart{padding:9px 6px;font-size:11px;height:40px;min-height:40px;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:1px;white-space:nowrap;overflow:hidden;}
   .pd-btn-ask-small{padding:9px 6px;font-size:10px;height:40px;min-height:40px;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:0.5px;background:none;border:1.5px solid #25D366;color:#25D366;font-family:'Jost',sans-serif;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s;white-space:nowrap;overflow:hidden;}
@@ -3415,7 +3415,11 @@ var qrcode = function() {
           <div class="policy-item"><span>✓</span><span>Exact amount calculated based on your pincode in next step</span></div>
         </div>
         <div class="warning-box"><p>⚠️ <strong>Damage Claims:</strong> Record full unboxing video with timestamp — mandatory in case of any damages. Damage claims without an unboxing video will not be accepted.</p></div>
-        <div class="checkbox-group"><input type="checkbox" id="policy-agree"/><label for="policy-agree">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</label></div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="policy-agree" style="position:absolute;opacity:0;width:0;height:0;"/>
+          <span class="custom-checkbox" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);" id="policy-agree-box"></span>
+          <label for="policy-agree" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;document.getElementById('policy-agree-box').classList.toggle('checked',cb.checked);">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</label>
+        </div>
       </div>
 
       <!-- STEP 2: Address Details -->
@@ -4150,7 +4154,7 @@ function openOrderById(pid) {
   document.getElementById('modal-prod-name').textContent = p.name;
   document.getElementById('modal-prod-img').src = getImgSrc(p);
   document.getElementById('modal-prod-price').textContent = displayPrice;
-  document.getElementById('policy-agree').checked = false;
+  document.getElementById('policy-agree').checked = false; var pab=document.getElementById('policy-agree-box'); if(pab) pab.classList.remove('checked');
   document.getElementById('cust-name').value='';
   document.getElementById('cust-phone').value='';
   document.getElementById('cust-pin').value='';
