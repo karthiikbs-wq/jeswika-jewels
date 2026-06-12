@@ -4,9 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jeswika Jewels — Fine South Indian Jewellery</title>
+<meta name="description" content="Handcrafted South Indian jewellery — Necklaces, Kaasu Mala, Bridal Collections & more. Shop now at Jeswika Jewels.">
+<meta property="og:title" content="Jeswika Jewels — Fine South Indian Jewellery">
+<meta property="og:description" content="Handcrafted South Indian jewellery — Necklaces, Kaasu Mala, Bridal Collections & more. Shop now!">
+<meta property="og:image" content="https://jeswikajewels.com/logo.png">
+<meta property="og:url" content="https://jeswikajewels.com">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <!-- Firebase SDK -->
 <script>
-// Carousel functions — must be global, defined before module script
 var _carouselTimer = null;
 function scrollCarousel(dir) {
   var track = document.getElementById('gallery-grid');
@@ -5152,8 +5158,11 @@ updateCartBadge();
         <button class="pd-btn-buy" onclick="buyFromPD()">Buy Now ➜</button>
       </div>
     </div>
-    <div class="pd-img-col">
+    <div class="pd-img-col" style="position:relative;">
       <img class="pd-main-img" id="pdImg" src="" alt="" onclick="toggleZoom(this)"/>
+      <button onclick="shareProduct(window._currentPD && window._currentPD.id, window._currentPD && window._currentPD.name)" title="Share" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
     </div>
   </div>
 </div>
@@ -5169,13 +5178,15 @@ function showSyncToast() {
 }
 
 function shareProduct(id, name) {
+  if (!id) return;
   const url = 'https://jeswikajewels.com/?product=' + id;
-  const text = '✨ Check out this beautiful jewellery from Jeswika Jewels!\n\n' + (name || '') + '\n\n' + url;
+  const shareTitle = (name || 'Jeswika Jewels') + ' — Jeswika Jewels';
+  const shareText = '✨ ' + (name || '') + ' — Beautiful South Indian Jewellery';
   if (navigator.share) {
-    navigator.share({ title: name || 'Jeswika Jewels', text: '✨ ' + (name||'') + ' — Beautiful South Indian Jewellery', url: url })
-      .catch(() => {});
+    navigator.share({ title: shareTitle, text: shareText, url: url }).catch(() => {});
   } else {
-    navigator.clipboard.writeText(text).then(() => {
+    const fullText = shareText + '\n' + url;
+    navigator.clipboard.writeText(fullText).then(() => {
       showCopyToast();
     }).catch(() => {
       prompt('Copy this link:', url);
