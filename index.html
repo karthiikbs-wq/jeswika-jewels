@@ -658,7 +658,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .search-input{width:100%;}
   .nav-logo img{height:56px;width:56px;}
   /* nav-logo handled by main mobile rule */
-  .wishlist-icon-wrap{padding:6px 10px;font-size:11px;flex-shrink:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none;}
+  .wishlist-icon-wrap{padding:6px 10px;font-size:11px;flex-shrink:1;min-width:0;white-space:nowrap;overflow:visible;}
   .cart-icon-wrap{padding:6px 10px;font-size:11px;}
   .nav-right{gap:6px;}
   .hero{grid-template-columns:1fr;padding:48px 20px 40px;min-height:auto;gap:32px;}
@@ -778,12 +778,12 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 }
 
 /* ===== CART ICON IN NAV ===== */
-.cart-icon-wrap{position:relative;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;white-space:nowrap;flex-shrink:1;min-width:0;}
+.cart-icon-wrap{position:relative;overflow:visible;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;white-space:nowrap;flex-shrink:1;min-width:0;}
 .cart-icon-wrap:hover{background:var(--gold-dark);}
 /* WISHLIST NAV */
-.wishlist-icon-wrap{position:relative;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;margin-right:0;white-space:nowrap;flex-shrink:1;min-width:0;}
+.wishlist-icon-wrap{position:relative;overflow:visible;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;margin-right:0;white-space:nowrap;flex-shrink:1;min-width:0;}
 .wishlist-icon-wrap:hover{background:var(--gold-dark);}
-.wishlist-badge{position:absolute;top:-8px;right:-8px;background:#DC2626;color:white;font-size:10px;padding:0 5px;border-radius:12px;font-weight:700;display:none;min-width:18px;height:18px;line-height:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.35);border:1.5px solid white;box-sizing:border-box;z-index:10;}
+.wishlist-badge{position:absolute;top:-10px;right:-10px;background:#DC2626;color:white;font-size:10px;padding:0 5px;border-radius:12px;font-weight:700;display:none;min-width:18px;height:18px;line-height:16px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:2px solid white;box-sizing:border-box;z-index:100;}
 /* WISHLIST DRAWER */
 .wishlist-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:800;display:none;}
 .wishlist-overlay.open{display:block;}
@@ -814,7 +814,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 #back-to-top{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.25);color:#fff;border:2px solid rgba(255,255,255,0.6);width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;z-index:350;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;}
 #back-to-top.show{opacity:1;visibility:visible;}
 #back-to-top:hover{background:var(--gold);}
-.cart-badge{position:absolute;top:-8px;right:-8px;background:#DC2626;color:white;border-radius:12px;min-width:18px;height:18px;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;padding:0 5px;box-shadow:0 1px 4px rgba(0,0,0,0.35);border:1.5px solid white;box-sizing:border-box;z-index:10;line-height:16px;text-align:center;}
+.cart-badge{position:absolute;top:-10px;right:-10px;background:#DC2626;color:white;border-radius:12px;min-width:18px;height:18px;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;padding:0 5px;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:2px solid white;box-sizing:border-box;z-index:100;line-height:16px;text-align:center;}
 .cart-badge.visible{display:flex;}
 .cart-badge.visible{display:flex;}
 
