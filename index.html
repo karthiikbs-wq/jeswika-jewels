@@ -3516,10 +3516,10 @@ var qrcode = function() {
     </div>
     <!-- SHARED MODAL FOOTER - always visible, outside scroll area -->
     <div class="modal-agree-bar" id="modal-agree-bar" style="display:none;">
-      <div class="checkbox-group" style="margin-bottom:0;">
+      <div style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:2px 0;" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;var box=document.getElementById('policy-agree-box');box.style.background=cb.checked?'#B8860B':'white';box.style.borderColor='#B8860B';box.textContent=cb.checked?'✓':'';box.style.color=cb.checked?'white':'transparent';box.style.fontWeight='bold';box.style.fontSize='16px';">
         <input type="checkbox" id="policy-agree" style="position:absolute;opacity:0;width:0;height:0;"/>
-        <span class="custom-checkbox" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);" id="policy-agree-box"></span>
-        <label for="policy-agree" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;document.getElementById('policy-agree-box').classList.toggle('checked',cb.checked);">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</label>
+        <div id="policy-agree-box" style="width:24px;height:24px;min-width:24px;border:2.5px solid #B8860B;border-radius:4px;background:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;"></div>
+        <span style="font-size:13px;color:#555;line-height:1.5;pointer-events:none;">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</span>
       </div>
     </div>
     <div class="modal-nav" id="modal-footer-nav">
@@ -4157,7 +4157,7 @@ function openOrderById(pid) {
   document.getElementById('modal-prod-name').textContent = p.name;
   document.getElementById('modal-prod-img').src = getImgSrc(p);
   document.getElementById('modal-prod-price').textContent = displayPrice;
-  document.getElementById('policy-agree').checked = false; var pab=document.getElementById('policy-agree-box'); if(pab) pab.classList.remove('checked');
+  document.getElementById('policy-agree').checked = false; var pab=document.getElementById('policy-agree-box'); if(pab){pab.style.background='white';pab.innerHTML='';}
   document.getElementById('cust-name').value='';
   document.getElementById('cust-phone').value='';
   document.getElementById('cust-pin').value='';
@@ -4432,9 +4432,9 @@ function updateModalNav(step){
 }
 
 function goOrderStep(n) {
+  if (n===2 && !document.getElementById('policy-agree').checked) { alert('Please tick the checkbox to agree to the policy before proceeding.'); return; }
   var agreeBar = document.getElementById('modal-agree-bar');
   if(agreeBar) agreeBar.style.display = (n===1) ? 'block' : 'none';
-  if (n===2 && !document.getElementById('policy-agree').checked) { alert('Please read and agree to the policy before proceeding.'); return; }
   for(let i=1;i<=4;i++) {
     document.getElementById('panel-'+i).classList.remove('active');
     const t=document.getElementById('step-tab-'+i);
@@ -5162,7 +5162,7 @@ function saveProduct() {
     } else {
       // ── ADD new product ──
       if(!blob && !file) { alert('Please upload a product photo.'); if(saveBtn){saveBtn.textContent='Save Product';saveBtn.disabled=false;} return; }
-      const newId = Math.max(0, ...products.map(x => x.id)) + 1;
+      const newId = Math.max(20, ...products.map(x => x.id)) + 1;
       const newProduct = {id: newId, name, category, price, originalPrice, badge, badgeColor, available, position};
       // If admin pasted an image URL directly, use it immediately
       if(manualImgUrl && !window._pendingImgBlob && !file) { newProduct.imgUrl = manualImgUrl; finishSave(newProduct, [...products, newProduct]); return; }
