@@ -739,7 +739,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .pd-img-col{padding:24px;display:flex;flex-direction:column;gap:12px;background:var(--cream);}
 .pd-main-img{width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in;border:1px solid var(--gold-border);}
 .pd-img-zoomed{width:100%;aspect-ratio:1;object-fit:contain;cursor:zoom-out;background:#fff;border:1px solid var(--gold-border);}
-.pd-info-col{padding:0;display:flex;flex-direction:column;order:-1;overflow:hidden;}
+.pd-info-col{padding:0;display:flex;flex-direction:column;order:-1;overflow:hidden;min-height:0;}
 .pd-modal-header{display:flex;justify-content:flex-end;padding:10px 16px 0;background:var(--white);}
 .pd-modal-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding:0 24px 16px;}
 .pd-img-col-mobile{display:none;}
@@ -754,6 +754,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .pd-divider{border:none;border-top:1px solid var(--gold-border);}
 .pd-desc{font-size:14px;color:var(--text-mid);line-height:1.8;}
 .pd-actions{display:flex;flex-direction:column;gap:10px;margin-top:auto;}
+.pd-actions-row1{display:flex;flex-direction:column;gap:10px;}
 .pd-btn-cart{background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;min-height:52px;width:100%;}
 .pd-btn-cart:hover{background:var(--gold);color:white;}
 .pd-btn-cart.in-cart{background:var(--gold);color:white;}
@@ -769,11 +770,16 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .pd-img-col{display:none;}
   .pd-img-col-mobile{display:block;margin:0 0 4px;}
   #pdImgMobile{display:block !important;}
-  .pd-info-col{padding:16px;order:0;}
-  .pd-actions{gap:6px;margin-top:0;position:sticky;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:8px 16px max(14px,env(safe-area-inset-bottom,14px));box-shadow:0 -4px 16px rgba(0,0,0,0.08);flex-direction:column;}
-  .pd-btn-cart,.pd-btn-buy,.pd-btn-ask{padding:11px 16px;font-size:12px;min-height:44px;width:100%;box-sizing:border-box;letter-spacing:1.5px;}
-  .pd-page{padding-bottom:180px;}
-  .pd-modal-scroll{padding:0 16px 180px;}
+  .pd-info-col{padding:0;order:0;display:flex;flex-direction:column;overflow:hidden;}
+  .pd-modal-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 12px;}
+  .pd-actions{flex-shrink:0;background:var(--white);padding:8px 16px max(14px,env(safe-area-inset-bottom,14px));box-shadow:0 -3px 12px rgba(0,0,0,0.08);gap:8px;flex-direction:column;margin-top:0;}
+  .pd-actions-row1{display:flex;gap:8px;}
+  .pd-btn-cart{padding:11px 10px;font-size:12px;min-height:44px;flex:1;box-sizing:border-box;letter-spacing:1px;}
+  .pd-btn-ask-small{padding:11px 10px;font-size:11px;min-height:44px;flex:1;box-sizing:border-box;letter-spacing:1px;background:none;border:1.5px solid #25D366;color:#25D366;font-family:'Jost',sans-serif;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s;}
+  .pd-btn-ask-small:hover{background:#25D366;color:white;}
+  .pd-btn-buy{padding:13px 16px;font-size:13px;min-height:48px;width:100%;box-sizing:border-box;letter-spacing:2px;}
+  .pd-btn-ask{padding:11px 16px;font-size:12px;min-height:44px;width:100%;box-sizing:border-box;letter-spacing:1.5px;}
+  .pd-page{padding-bottom:0;}
   .pd-modal-header{padding:10px 12px 0;}
 }
 
@@ -5239,12 +5245,14 @@ updateCartBadge();
       </div>
       <div class="pd-actions">
         <p class="pd-added-msg" id="pdAddedMsg">✓ Added to cart!</p>
-        <button class="pd-btn-cart" id="pdCartBtn" onclick="pdCartAction()">🛍 Add to Cart</button>
-        <button class="pd-btn-buy" onclick="buyFromPD()">Buy Now ➜</button>
-        <button class="pd-btn-ask" onclick="askOnWhatsApp()">
+        <div class="pd-actions-row1">
+          <button class="pd-btn-cart" id="pdCartBtn" onclick="pdCartAction()">🛍 Add to Cart</button>
+          <button class="pd-btn-ask pd-btn-ask-small" onclick="askOnWhatsApp()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.49 5.49 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 1.5C6.199 1.5 1.5 6.199 1.5 12c0 1.847.478 3.58 1.315 5.088L1.5 22.5l5.574-1.298A10.457 10.457 0 0 0 12 22.5c5.799 0 10.5-4.699 10.5-10.5S17.8 1.5 12 1.5z"/></svg>
           Ask on WhatsApp
-        </button>
+          </button>
+        </div>
+        <button class="pd-btn-buy" onclick="buyFromPD()">Buy Now ➜</button>
 
       </div>
     </div>
