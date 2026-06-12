@@ -385,8 +385,10 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .sold-badge-abs{position:absolute;bottom:0;left:0;right:0;background:rgba(220,38,38,0.9);color:white;font-size:12px;letter-spacing:3px;text-transform:uppercase;padding:8px;text-align:center;font-weight:500;}
 
 .prod-img{aspect-ratio:1;overflow:hidden;border-bottom:1px solid var(--gold-border);position:relative;}
-.share-btn-img{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.18);transition:all .2s;z-index:5;padding:0;}
-.share-btn-img:hover{background:#B8860B;color:#fff;transform:scale(1.1);}
+.share-btn-img{position:absolute;bottom:8px;right:8px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.18);transition:background .2s,color .2s;z-index:5;padding:0;}
+.share-btn-img:hover{background:#B8860B;color:#fff;}
+.pd-share-btn{position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;transition:background .2s,color .2s;}
+.pd-share-btn:hover{background:#B8860B;color:#fff;}
 .prod-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
 .prod-card:hover .prod-img img{transform:scale(1.06);}
 .prod-body{padding:14px;display:flex;flex-direction:column;flex:1;}
@@ -3781,6 +3783,7 @@ function openProductDetail(pid){
   var p = products.find(function(x){return String(x.id)===String(pid);});
   if(!p) return;
   currentPDProduct = p;
+  window._currentPD = p; // used by share buttons
   var imgSrc = getImgSrc(p);
   // Set both desktop and mobile images
   document.getElementById('pdImg').src = imgSrc;
@@ -5144,7 +5147,7 @@ updateCartBadge();
         <div class="pd-id" id="pdIdLabel"></div>
         <div class="pd-img-col-mobile" style="position:relative;">
           <img class="pd-main-img" id="pdImgMobile" src="" alt="" onclick="toggleZoom(this)" style="width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in;border:1px solid var(--gold-border);"/>
-          <button onclick="shareProduct(window._currentPD && window._currentPD.id, window._currentPD && window._currentPD.name)" title="Share" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;">
+          <button onclick="var p=window._currentPD;if(p)shareProduct(p.id,p.name);" title="Share" class="pd-share-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
         </div>
@@ -5160,7 +5163,7 @@ updateCartBadge();
     </div>
     <div class="pd-img-col" style="position:relative;">
       <img class="pd-main-img" id="pdImg" src="" alt="" onclick="toggleZoom(this)"/>
-      <button onclick="shareProduct(window._currentPD && window._currentPD.id, window._currentPD && window._currentPD.name)" title="Share" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;">
+      <button onclick="var p=window._currentPD;if(p)shareProduct(p.id,p.name);" title="Share" class="pd-share-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       </button>
     </div>
