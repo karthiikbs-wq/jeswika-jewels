@@ -577,6 +577,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .custom-checkbox.checked{background:var(--gold);color:white;}
 .custom-checkbox.checked::after{content:'✓';font-weight:700;}
 .checkbox-group label{font-size:13px;color:var(--text-mid);line-height:1.5;cursor:pointer;}
+.modal-agree-bar{flex-shrink:0;background:#FFFBF0;border-top:1px solid var(--gold-border);padding:10px 16px;}
 .modal-nav{display:flex;gap:10px;padding:12px 16px;border-top:2px solid var(--gold-border);background:var(--white);flex-shrink:0;padding-bottom:max(12px,env(safe-area-inset-bottom,12px));}
 .modal-nav button{flex:1;}
 .success-box{text-align:center;padding:24px 14px;}
@@ -756,7 +757,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .pd-divider{border:none;border-top:1px solid var(--gold-border);}
 .pd-desc{font-size:14px;color:var(--text-mid);line-height:1.8;}
 .pd-actions{display:flex;flex-direction:column;gap:10px;margin-top:auto;}
-.pd-btn-cart{background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;min-height:52px;width:100%;}
+.pd-btn-cart{background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;min-height:52px;width:100%;box-sizing:border-box;}
 .pd-btn-cart:hover{background:var(--gold);color:white;}
 .pd-btn-cart.in-cart{background:var(--gold);color:white;}
 .pd-btn-buy{background:var(--gold);color:white;padding:14px 20px;border:1.5px solid var(--gold);font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .2s;min-height:52px;width:100%;}
@@ -775,8 +776,8 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .pd-modal-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 12px;}
   .pd-actions{flex-shrink:0;background:var(--white);padding:6px 16px 10px;box-shadow:0 -3px 12px rgba(0,0,0,0.08);gap:6px;flex-direction:column;margin-top:0;}
   .pd-actions-row1{display:flex;gap:6px;}
-  .pd-btn-cart{padding:9px 6px;font-size:11px;height:40px;min-height:40px;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:1px;white-space:nowrap;overflow:hidden;}
-  .pd-btn-ask-small{padding:9px 6px;font-size:10px;height:40px;min-height:40px;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:0.5px;background:none;border:1.5px solid #25D366;color:#25D366;font-family:'Jost',sans-serif;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s;white-space:nowrap;overflow:hidden;}
+  .pd-btn-cart{padding:9px 6px;font-size:11px;height:40px !important;min-height:40px !important;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:1px;white-space:nowrap;overflow:hidden;}
+  .pd-btn-ask-small{padding:9px 6px;font-size:10px;height:40px !important;min-height:40px !important;flex:1 !important;width:auto !important;box-sizing:border-box;letter-spacing:0.5px;background:none;border:1.5px solid #25D366;color:#25D366;font-family:'Jost',sans-serif;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .2s;white-space:nowrap;overflow:hidden;}
   .pd-btn-ask-small:hover{background:#25D366;color:white;}
   .pd-btn-buy{padding:14px 16px;font-size:14px;font-weight:600;height:52px;min-height:52px;width:100% !important;box-sizing:border-box;letter-spacing:3px;}
   .pd-btn-ask{padding:11px 16px;font-size:12px;min-height:40px;width:100%;box-sizing:border-box;letter-spacing:1.5px;}
@@ -815,7 +816,7 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .heart-btn:hover{transform:scale(1.15);}
 .heart-btn.wishlisted{color:#DC2626;}
 /* ASK ON WHATSAPP */
-.pd-btn-ask{width:100%;background:none;border:1.5px solid #25D366;color:#25D366;padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0;min-height:52px;}
+.pd-btn-ask{width:100%;background:none;border:1.5px solid #25D366;color:#25D366;padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0;}
 .pd-btn-ask:hover{background:#25D366;color:white;}
 /* BACK TO TOP */
 #back-to-top{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.25);color:#fff;border:2px solid rgba(255,255,255,0.6);width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;z-index:350;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;}
@@ -3415,11 +3416,6 @@ var qrcode = function() {
           <div class="policy-item"><span>✓</span><span>Exact amount calculated based on your pincode in next step</span></div>
         </div>
         <div class="warning-box"><p>⚠️ <strong>Damage Claims:</strong> Record full unboxing video with timestamp — mandatory in case of any damages. Damage claims without an unboxing video will not be accepted.</p></div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="policy-agree" style="position:absolute;opacity:0;width:0;height:0;"/>
-          <span class="custom-checkbox" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);" id="policy-agree-box"></span>
-          <label for="policy-agree" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;document.getElementById('policy-agree-box').classList.toggle('checked',cb.checked);">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</label>
-        </div>
       </div>
 
       <!-- STEP 2: Address Details -->
@@ -3519,6 +3515,13 @@ var qrcode = function() {
       </div>
     </div>
     <!-- SHARED MODAL FOOTER - always visible, outside scroll area -->
+    <div class="modal-agree-bar" id="modal-agree-bar" style="display:none;">
+      <div class="checkbox-group" style="margin-bottom:0;">
+        <input type="checkbox" id="policy-agree" style="position:absolute;opacity:0;width:0;height:0;"/>
+        <span class="custom-checkbox" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;this.classList.toggle('checked',cb.checked);" id="policy-agree-box"></span>
+        <label for="policy-agree" onclick="var cb=document.getElementById('policy-agree');cb.checked=!cb.checked;document.getElementById('policy-agree-box').classList.toggle('checked',cb.checked);">I have read and agree to the above policy. I understand orders are confirmed only after payment and I will record an unboxing video.</label>
+      </div>
+    </div>
     <div class="modal-nav" id="modal-footer-nav">
       <button class="btn-outline" id="modal-btn-back" onclick="modalNavBack()" style="display:none;flex:0 0 auto;">← Back</button>
       <button class="btn-gold" id="modal-btn-next" onclick="modalNavNext()" style="flex:1;">I Agree — Enter Address ➜</button>
@@ -4429,6 +4432,8 @@ function updateModalNav(step){
 }
 
 function goOrderStep(n) {
+  var agreeBar = document.getElementById('modal-agree-bar');
+  if(agreeBar) agreeBar.style.display = (n===1) ? 'block' : 'none';
   if (n===2 && !document.getElementById('policy-agree').checked) { alert('Please read and agree to the policy before proceeding.'); return; }
   for(let i=1;i<=4;i++) {
     document.getElementById('panel-'+i).classList.remove('active');
