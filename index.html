@@ -11,6 +11,45 @@
 <meta property="og:url" content="https://jeswikajewels.com">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
+<script>
+var _carouselTimer = null;
+// Wishlist helpers — must be global before module script
+function getWishlist(){try{return JSON.parse(localStorage.getItem('jj_wishlist')||'[]');}catch(e){return[];}}
+function saveWishlist(w){try{localStorage.setItem('jj_wishlist',JSON.stringify(w));}catch(e){}}
+function isWishlisted(id){return getWishlist().some(function(x){return String(x)===String(id);});}
+function scrollCarousel(dir) {
+  var track = document.getElementById('gallery-grid');
+  if (!track) return;
+  var cellW = track.querySelector('.gallery-cell');
+  var scrollAmt = cellW ? (cellW.offsetWidth + 8) * 2 : 260;
+  track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
+}
+function startCarouselAuto() {
+  if (_carouselTimer) clearInterval(_carouselTimer);
+  _carouselTimer = setInterval(function() {
+    var track = document.getElementById('gallery-grid');
+    if (!track) return;
+    var maxScroll = track.scrollWidth - track.clientWidth;
+    if (track.scrollLeft >= maxScroll - 5) {
+      track.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      var cellW = track.querySelector('.gallery-cell');
+      var scrollAmt = cellW ? (cellW.offsetWidth + 8) : 130;
+      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
+    }
+  }, 3000);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof renderFilterTabs === 'function') renderFilterTabs();
+  var track = document.getElementById('gallery-grid');
+  if (track) {
+    track.addEventListener('mouseenter', function() { if (_carouselTimer) clearInterval(_carouselTimer); });
+    track.addEventListener('mouseleave', startCarouselAuto);
+    track.addEventListener('touchstart', function() { if (_carouselTimer) clearInterval(_carouselTimer); }, {passive:true});
+    track.addEventListener('touchend', function() { setTimeout(startCarouselAuto, 3000); }, {passive:true});
+  }
+});
+</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
@@ -147,6 +186,7 @@
       if (typeof renderProducts === 'function') renderProducts();
       if (typeof updateStats === 'function') updateStats();
       if (typeof renderAdminTable === 'function') renderAdminTable();
+      if (typeof renderFilterTabs === 'function') renderFilterTabs();
       // Show toast only on other devices (not first load, and only if data changed)
       if (!_firstLoad && current !== updated) {
         if (typeof showSyncToast === 'function') showSyncToast();
@@ -238,7 +278,7 @@ body{font-family:'Jost',sans-serif;background:var(--white);color:var(--text);ove
 
 /* NAV */
 nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px solid var(--gold-border);padding:0 32px;}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;height:96px;}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:96px;position:relative;}
 
 /* HAMBURGER */
 .hamburger{display:flex;flex-direction:column;gap:5px;cursor:pointer;padding:8px;position:relative;}
@@ -252,10 +292,12 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .hamburger-wrap{position:relative;}
 
 /* LOGO */
-.nav-logo img{height:80px;width:80px;object-fit:cover;border-radius:50%;}
+.nav-logo{position:absolute;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;}
+.nav-logo img{height:80px;width:80px;object-fit:cover;border-radius:50%;pointer-events:auto;}
 
 /* NAV RIGHT */
-.nav-right{display:flex;align-items:center;gap:12px;}
+.nav-right{display:flex;align-items:center;gap:12px;flex:1;justify-content:flex-end;}
+.hamburger-wrap{flex:1;}
 .btn-gold{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--gold);color:var(--white);padding:14px 18px;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;transition:background .3s;border:none;cursor:pointer;font-family:'Jost',sans-serif;min-height:48px;}
 .btn-gold:hover{background:var(--gold-light);}
 .btn-outline{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--gold);color:var(--gold);padding:13px 16px;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;transition:all .3s;background:transparent;cursor:pointer;font-family:'Jost',sans-serif;min-height:48px;}
@@ -354,6 +396,9 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .share-btn-img:hover{background:#B8860B;color:#fff;}
 .pd-share-btn{position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;transition:background .2s,color .2s;}
 .pd-share-btn:hover{background:#B8860B;color:#fff;}
+.pd-heart-btn{position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#B8860B;box-shadow:0 2px 8px rgba(0,0,0,0.2);z-index:5;padding:0;transition:background .2s,color .2s;line-height:1;}
+.pd-heart-btn:hover{background:#B8860B;color:#fff;}
+.pd-heart-btn.wishlisted{color:#DC2626;}
 .prod-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s;}
 .prod-card:hover .prod-img img{transform:scale(1.06);}
 .prod-body{padding:14px;display:flex;flex-direction:column;flex:1;}
@@ -364,7 +409,7 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .prod-price{font-size:16px;color:#DC2626;font-weight:600;}
 .prod-original{font-size:13px;color:var(--text-light);text-decoration:line-through;}
 .prod-discount{font-size:11px;color:#16A34A;font-weight:500;background:#DCFCE7;padding:2px 7px;border-radius:2px;}
-.prod-buy{display:block;background:var(--gold);border:none;padding:13px;width:100%;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--white);cursor:pointer;font-family:'Jost',sans-serif;transition:background .3s;min-height:46px;}
+.prod-buy{display:block;background:var(--gold);border:1.5px solid var(--gold);padding:13px;width:100%;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--white);cursor:pointer;font-family:'Jost',sans-serif;transition:background .3s;min-height:46px;box-sizing:border-box;}
 .prod-buy:hover{background:var(--gold-light);}
 .prod-buy:disabled{background:#ccc;cursor:not-allowed;}
 .no-products{text-align:center;padding:60px;color:var(--text-light);font-size:15px;grid-column:1/-1;}
@@ -604,11 +649,18 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 @media(max-width:1024px){#products-grid{grid-template-columns:repeat(2,1fr);}.admin-stats{grid-template-columns:repeat(2,1fr);}.footer-grid{grid-template-columns:1fr 1fr;}.policy-cards{grid-template-columns:1fr 1fr;}.shipping-banner{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:768px){
   nav{padding:0 12px;}
-  .nav-inner{height:64px;}
-  .nav-inner{height:auto;flex-wrap:wrap;padding:8px 0;}
-  .search-wrap{display:flex;width:100%;margin:4px 0 8px;order:99;flex:0 0 100%;}
+  .nav-inner{height:auto;min-height:64px;flex-wrap:wrap;padding:8px 0;}
+  .hamburger-wrap{flex:0 0 auto;min-width:44px;align-self:center;}
+  .nav-logo{position:relative;left:auto;transform:none;margin:0 auto;order:1;pointer-events:auto;}
+  .nav-logo img{pointer-events:auto;}
+  .nav-right{flex:0 0 100%;order:2;justify-content:flex-start;padding:6px 8px 4px;border-top:1px solid var(--gold-border);gap:6px;overflow:hidden;}
+  .search-wrap{flex:1;min-width:120px;max-width:300px;margin:0 !important;}
   .search-input{width:100%;}
   .nav-logo img{height:56px;width:56px;}
+  /* nav-logo handled by main mobile rule */
+  .wishlist-icon-wrap{padding:6px 10px;font-size:11px;flex-shrink:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none;}
+  .cart-icon-wrap{padding:6px 10px;font-size:11px;}
+  .nav-right{gap:6px;}
   .hero{grid-template-columns:1fr;padding:48px 20px 40px;min-height:auto;gap:32px;}
   .hero-visual{display:flex;width:100%;order:-1;}
   .hero-img-frame{max-width:100%;aspect-ratio:1.2;}
@@ -635,8 +687,9 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .form-row{grid-template-columns:1fr;}
   .admin-stats{grid-template-columns:1fr 1fr;}
   .social-cards{grid-template-columns:1fr;}
-  .search-wrap{display:flex;width:100%;margin:8px 0 4px;}
+
   .btn-gold.nav-whatsapp{display:none;}
+.btn-gold.nav-whatsapp{display:none!important;}
   .cart-icon-wrap{padding:10px 14px;font-size:13px;}
   /* Product grid 2 col on mobile */
   #prod-grid{grid-template-columns:repeat(2,1fr) !important;}
@@ -701,10 +754,10 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 .pd-divider{border:none;border-top:1px solid var(--gold-border);}
 .pd-desc{font-size:14px;color:var(--text-mid);line-height:1.8;}
 .pd-actions{display:flex;flex-direction:column;gap:10px;margin-top:auto;}
-.pd-btn-cart{background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:12px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;}
+.pd-btn-cart{background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;min-height:52px;width:100%;}
 .pd-btn-cart:hover{background:var(--gold);color:white;}
 .pd-btn-cart.in-cart{background:var(--gold);color:white;}
-.pd-btn-buy{background:var(--gold);color:white;padding:13px 20px;border:none;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+.pd-btn-buy{background:var(--gold);color:white;padding:14px 20px;border:1.5px solid var(--gold);font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background .2s;min-height:52px;width:100%;}
 .pd-btn-buy:hover{background:var(--gold-dark);}
 .pd-added-msg{font-size:12px;color:green;text-align:center;display:none;}
 @media(min-width:641px){
@@ -717,17 +770,52 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
   .pd-img-col-mobile{display:block;margin:0 0 4px;}
   #pdImgMobile{display:block !important;}
   .pd-info-col{padding:16px;order:0;}
-  .pd-actions{gap:8px;margin-top:0;position:sticky;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:12px 16px 20px;box-shadow:0 -4px 16px rgba(0,0,0,0.08);flex-direction:row;}
-  .pd-btn-cart,.pd-btn-buy{padding:14px;font-size:12px;min-height:48px;flex:1;}
+  .pd-actions{gap:8px;margin-top:0;position:sticky;bottom:0;left:0;right:0;z-index:500;background:var(--white);padding:12px 16px 20px;box-shadow:0 -4px 16px rgba(0,0,0,0.08);flex-direction:column;}
+  .pd-btn-cart,.pd-btn-buy,.pd-btn-ask{padding:14px 16px;font-size:13px;min-height:52px;width:100%;box-sizing:border-box;}
   .pd-page{padding-bottom:120px;}
   .pd-modal-scroll{padding:0 16px 8px;}
   .pd-modal-header{padding:10px 12px 0;}
 }
 
 /* ===== CART ICON IN NAV ===== */
-.cart-icon-wrap{position:relative;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;}
+.cart-icon-wrap{position:relative;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;white-space:nowrap;flex-shrink:1;min-width:0;}
 .cart-icon-wrap:hover{background:var(--gold-dark);}
-.cart-badge{position:absolute;top:-6px;right:-6px;background:var(--gold);color:white;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;display:none;}
+/* WISHLIST NAV */
+.wishlist-icon-wrap{position:relative;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--gold);color:white;font-size:12px;letter-spacing:1px;font-family:'Jost',sans-serif;transition:background .2s;margin-right:0;white-space:nowrap;flex-shrink:1;min-width:0;}
+.wishlist-icon-wrap:hover{background:var(--gold-dark);}
+.wishlist-badge{position:absolute;top:-8px;right:-8px;background:#DC2626;color:white;font-size:10px;padding:0 5px;border-radius:12px;font-weight:700;display:none;min-width:18px;height:18px;line-height:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.35);border:1.5px solid white;box-sizing:border-box;z-index:10;}
+/* WISHLIST DRAWER */
+.wishlist-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:800;display:none;}
+.wishlist-overlay.open{display:block;}
+.wishlist-drawer{position:fixed;top:0;right:-360px;width:340px;max-width:95vw;height:100vh;background:white;z-index:801;transition:right .35s ease;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,0.15);}
+.wishlist-drawer.open{right:0;}
+.wishlist-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--gold-border);}
+.wishlist-title{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--text);}
+.wishlist-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-light);}
+.wishlist-items{flex:1;overflow-y:auto;padding:16px;}
+.wishlist-empty{text-align:center;color:var(--text-light);font-size:14px;padding:40px 20px;}
+.wishlist-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--gold-border);align-items:center;}
+.wishlist-item img{width:64px;height:64px;object-fit:cover;border:1px solid var(--gold-border);}
+.wishlist-item-info{flex:1;}
+.wishlist-item-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px;}
+.wishlist-item-price{font-size:13px;color:var(--gold);font-weight:600;}
+.wishlist-item-status{font-size:11px;color:#DC2626;margin-top:2px;}
+.wishlist-item-remove{background:none;border:none;color:#DC2626;cursor:pointer;font-size:18px;padding:0 4px;}
+.wishlist-item-actions{display:flex;gap:6px;margin-top:6px;}
+.wishlist-item-buy{background:var(--gold);color:white;border:none;padding:5px 12px;font-size:11px;cursor:pointer;font-family:'Jost',sans-serif;letter-spacing:1px;}
+/* HEART BUTTON ON CARD */
+.heart-btn{position:absolute;bottom:8px;left:8px;background:rgba(255,255,255,0.92);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:5;transition:transform .2s;}
+.heart-btn:hover{transform:scale(1.15);}
+.heart-btn.wishlisted{color:#DC2626;}
+/* ASK ON WHATSAPP */
+.pd-btn-ask{width:100%;background:none;border:1.5px solid #25D366;color:#25D366;padding:14px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:0;min-height:52px;}
+.pd-btn-ask:hover{background:#25D366;color:white;}
+/* BACK TO TOP */
+#back-to-top{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.25);color:#fff;border:2px solid rgba(255,255,255,0.6);width:40px;height:40px;border-radius:50%;font-size:20px;cursor:pointer;z-index:350;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;}
+#back-to-top.show{opacity:1;visibility:visible;}
+#back-to-top:hover{background:var(--gold);}
+.cart-badge{position:absolute;top:-8px;right:-8px;background:#DC2626;color:white;border-radius:12px;min-width:18px;height:18px;font-size:10px;display:none;align-items:center;justify-content:center;font-weight:700;padding:0 5px;box-shadow:0 1px 4px rgba(0,0,0,0.35);border:1.5px solid white;box-sizing:border-box;z-index:10;line-height:16px;text-align:center;}
+.cart-badge.visible{display:flex;}
 .cart-badge.visible{display:flex;}
 
 /* ===== CART DRAWER ===== */
@@ -3075,13 +3163,7 @@ var qrcode = function() {
       </div>
       <div class="dropdown-menu" id="dropdownMenu">
         <span class="dropdown-item" onclick="filterFromMenu('All')">✦ All Products</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Necklace')">Necklace</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Pearl Haram')">Pearl Haram</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Choker')">Choker</span>
-        <span class="dropdown-item" onclick="filterFromMenu('American Diamonds')">American Diamonds</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Invisible Chain')">Invisible Chain</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Kaasu Mala')">Kaasu Mala</span>
-        <span class="dropdown-item" onclick="filterFromMenu('Bridal Collections')">Bridal Collections</span>
+        <!-- categories injected by renderFilterTabs() -->
         <span class="dropdown-item" onclick="scrollToSection('how-to-order')">How to Order</span>
         <span class="dropdown-item" onclick="scrollToSection('policy')">Policy</span>
         <span class="dropdown-item" onclick="scrollToSection('contact')">Contact</span>
@@ -3097,11 +3179,12 @@ var qrcode = function() {
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <div class="search-results" id="searchResults"></div>
       </div>
-      <a href="https://wa.me/919482393897" class="btn-gold nav-whatsapp" style="color:white;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.49 5.49 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 1.5C6.199 1.5 1.5 6.199 1.5 12c0 1.847.478 3.58 1.315 5.088L1.5 22.5l5.574-1.298A10.457 10.457 0 0 0 12 22.5c5.799 0 10.5-4.699 10.5-10.5S17.8 1.5 12 1.5z"/></svg>
-        WhatsApp
-      </a>
       <!-- HIDDEN ADMIN - tiny gear icon -->
+      <div class="wishlist-icon-wrap" onclick="openWishlist()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        Wishlist
+        <span class="wishlist-badge" id="wishlistBadge">0</span>
+      </div>
       <div class="cart-icon-wrap" onclick="openCart()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
         Cart
@@ -3152,13 +3235,6 @@ var qrcode = function() {
   <div class="section-head"><p class="eyebrow">Handpicked for You</p><h2 class="section-title">Our <em>Products</em></h2><div class="ornament-line"><div class="ornament-line-dot"></div></div></div>
   <div class="filter-tabs" id="filter-tabs">
     <button class="filter-tab active" onclick="filterProducts(this,'All')">All</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Necklace')">Necklace</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Pearl Haram')">Pearl Haram</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Choker')">Choker</button>
-    <button class="filter-tab" onclick="filterProducts(this,'American Diamonds')">American Diamonds</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Invisible Chain')">Invisible Chain</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Kaasu Mala')">Kaasu Mala</button>
-    <button class="filter-tab" onclick="filterProducts(this,'Bridal Collections')">Bridal</button>
   </div>
   <div id="products-grid"></div>
 </section>
@@ -3600,11 +3676,12 @@ function renderProducts() {
       ${p.available===false ? '<div class="sold-overlay"><div class="sold-badge-abs">Sold Out</div></div>' : ''}
       ${disc>0 && p.available!==false ? `<div class="disc-badge">${disc}%<br>OFF</div>` : ''}
       ${p.badge && p.badgeColor ? `<div class="badge-corner ${badgeClass}">${p.badge}</div>` : ''}
-      <div class="prod-img">
+      <div class="prod-img" style="position:relative;">
         <img src="${getImgSrc(p)}" alt="${p.name}" loading="lazy"/>
         <button onclick="event.stopPropagation();shareProduct('${p.id}','${p.name.replace(/'/g,"\\'")}');" title="Share" class="share-btn-img">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         </button>
+        <button onclick="event.stopPropagation();toggleWishlist('${p.id}');" class="heart-btn ${isWishlisted(p.id)?'wishlisted':''}" id="heart-${p.id}" title="Save to Wishlist">${isWishlisted(p.id)?'♥':'♡'}</button>
       </div>
       <div class="prod-body">
         <div class="prod-id">ID: TK-${String(p.id).padStart(3,'0')}</div>
@@ -3615,7 +3692,7 @@ function renderProducts() {
           ${origNum && origNum>priceNum ? `<span class="prod-original">₹${origNum.toLocaleString('en-IN')}</span>` : ''}
           ${disc>0 ? `<span class="prod-discount">${disc}% off</span>` : ''}
         </div>
-        <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''} style="display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;min-height:46px;${p.available===false?'opacity:0.5;cursor:not-allowed;':''}">
+        <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''} style="display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;min-height:46px;box-sizing:border-box;${p.available===false?'opacity:0.5;cursor:not-allowed;':''}">
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
         <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
@@ -3749,6 +3826,10 @@ function openProductDetail(pid){
   if(!p) return;
   currentPDProduct = p;
   window._currentPD = p; // used by share buttons
+  var wb = document.getElementById('pdWishBtn');
+  if(wb){ var w=isWishlisted(p.id); wb.textContent=w?'♥':'♡'; wb.classList.toggle('wishlisted',w); }
+  var wbd = document.getElementById('pdWishBtnDesktop');
+  if(wbd){ var wd=isWishlisted(p.id); wbd.textContent=wd?'♥':'♡'; wbd.classList.toggle('wishlisted',wd); }
   var imgSrc = getImgSrc(p);
   // Set both desktop and mobile images
   document.getElementById('pdImg').src = imgSrc;
@@ -3851,6 +3932,20 @@ function openLightbox(src){
     // Pinch to zoom (mobile)
     var wrap = lb.querySelector('#lbImgWrap');
     var lastDist = null, curScale = 1;
+    var lastTap = 0;
+    // Double-tap to zoom in/out
+    wrap.addEventListener('touchend', function(e){
+      lastDist = null;
+      var now = Date.now();
+      if(now - lastTap < 300 && e.changedTouches.length === 1){
+        var img = document.getElementById('lbImg');
+        curScale = curScale > 1.5 ? 1 : 2.5;
+        lb._scale = curScale;
+        img.style.transition = 'transform 0.25s';
+        img.style.transform = 'scale('+curScale+')';
+      }
+      lastTap = now;
+    });
     wrap.addEventListener('touchstart', function(e){
       if(e.touches.length===2){ lastDist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); }
     }, {passive:true});
@@ -4809,10 +4904,31 @@ function updateStats(){
   document.getElementById('stat-soldout').textContent=p.filter(x=>x.available===false).length;
   document.getElementById('stat-categories').textContent=[...new Set(p.map(x=>x.category))].length;
 }
-// ── Category Management ──
+function renderFilterTabs() {
+  var cats = getCategories();
+  // Filter tabs
+  var tabs = document.getElementById('filter-tabs');
+  if (tabs) {
+    tabs.innerHTML = '<button class="filter-tab active" onclick="filterProducts(this,\'All\')">All</button>' +
+      cats.map(function(c){ return '<button class="filter-tab" onclick="filterProducts(this,\''+c+'\')">'+c+'</button>'; }).join('');
+  }
+  // Hamburger menu - inject category items before the static links
+  var menu = document.getElementById('dropdownMenu');
+  if (menu) {
+    var catItems = cats.map(function(c){ return '<span class="dropdown-item" onclick="filterFromMenu(\''+c+'\')">'+c+'</span>'; }).join('');
+    menu.innerHTML =
+      '<span class="dropdown-item" onclick="filterFromMenu(\'All\')">✦ All Products</span>' +
+      catItems +
+      '<span class="dropdown-item" onclick="scrollToSection(\'how-to-order\')">How to Order</span>' +
+      '<span class="dropdown-item" onclick="scrollToSection(\'policy\')">Policy</span>' +
+      '<span class="dropdown-item" onclick="scrollToSection(\'contact\')">Contact</span>';
+  }
+}
 var DEFAULT_CATEGORIES = ['Necklace','Pearl Haram','Choker','American Diamonds','Invisible Chain','Kaasu Mala','Bridal Collections','Other'];
 function getCategories(){try{const s=localStorage.getItem('jj_categories');return s?JSON.parse(s):DEFAULT_CATEGORIES.slice();}catch(e){return DEFAULT_CATEGORIES.slice();}}
-function saveCategories(cats){try{localStorage.setItem('jj_categories',JSON.stringify(cats));}catch(e){}}
+function saveCategories(cats){try{localStorage.setItem('jj_categories',JSON.stringify(cats));}catch(e){}
+  if(typeof renderFilterTabs==='function') renderFilterTabs();
+}
 function populateCategoryDropdown(){
   const sel=document.getElementById('ap-category');if(!sel)return;
   const cats=getCategories();const cur=sel.value;
@@ -5115,6 +5231,7 @@ updateCartBadge();
           <button onclick="var p=window._currentPD;if(p)shareProduct(p.id,p.name);" title="Share" class="pd-share-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
+          <button id="pdWishBtn" class="pd-heart-btn" onclick="var p=window._currentPD;if(p){toggleWishlist(p.id);var w=isWishlisted(p.id);this.classList.toggle('wishlisted',w);this.textContent=w?'\u2665':'\u2661';}">&#9825;</button>
         </div>
         <hr class="pd-divider"/>
         <p class="pd-desc">Handcrafted South Indian jewellery. Ideal for weddings, pujas, and special occasions. Lightweight and comfortable to wear.</p>
@@ -5124,6 +5241,11 @@ updateCartBadge();
         <p class="pd-added-msg" id="pdAddedMsg">✓ Added to cart!</p>
         <button class="pd-btn-cart" id="pdCartBtn" onclick="pdCartAction()">🛍 Add to Cart</button>
         <button class="pd-btn-buy" onclick="buyFromPD()">Buy Now ➜</button>
+        <button class="pd-btn-ask" onclick="askOnWhatsApp()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a5.49 5.49 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 1.5C6.199 1.5 1.5 6.199 1.5 12c0 1.847.478 3.58 1.315 5.088L1.5 22.5l5.574-1.298A10.457 10.457 0 0 0 12 22.5c5.799 0 10.5-4.699 10.5-10.5S17.8 1.5 12 1.5z"/></svg>
+          Ask on WhatsApp
+        </button>
+
       </div>
     </div>
     <div class="pd-img-col" style="position:relative;">
@@ -5131,46 +5253,26 @@ updateCartBadge();
       <button onclick="var p=window._currentPD;if(p)shareProduct(p.id,p.name);" title="Share" class="pd-share-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       </button>
+      <button id="pdWishBtnDesktop" class="pd-heart-btn" onclick="var p=window._currentPD;if(p){toggleWishlist(p.id);var w=isWishlisted(p.id);this.classList.toggle('wishlisted',w);this.textContent=w?'♥':'♡';document.getElementById('pdWishBtn')&&(document.getElementById('pdWishBtn').textContent=w?'♥':'♡',document.getElementById('pdWishBtn').classList.toggle('wishlisted',w));}">&#9825;</button>
     </div>
   </div>
 </div>
 <script>document.getElementById('copy-year').textContent = new Date().getFullYear();</script>
+<!-- WISHLIST DRAWER -->
+<div class="wishlist-overlay" id="wishlistOverlay" onclick="closeWishlist()"></div>
+<div class="wishlist-drawer" id="wishlistDrawer">
+  <div class="wishlist-header">
+    <span class="wishlist-title">❤ My Wishlist</span>
+    <button class="wishlist-close" onclick="closeWishlist()">✕</button>
+  </div>
+  <div class="wishlist-items" id="wishlistItems">
+    <div class="wishlist-empty">Your wishlist is empty.<br>Tap ♡ on any product to save it!</div>
+  </div>
+</div>
+<!-- BACK TO TOP -->
+<button id="back-to-top" onclick="var s=document.getElementById('shop');if(s){s.scrollIntoView({behavior:'smooth'});}else{window.scrollTo({top:0,behavior:'smooth'});}" title="Back to products">↑</button>
 <!-- Sync toast -->
 <div id="sync-toast">✦ Products updated</div>
-<script>
-var _carouselTimer = null;
-function scrollCarousel(dir) {
-  var track = document.getElementById('gallery-grid');
-  if (!track) return;
-  var cellW = track.querySelector('.gallery-cell');
-  var scrollAmt = cellW ? (cellW.offsetWidth + 8) * 2 : 260;
-  track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
-}
-function startCarouselAuto() {
-  if (_carouselTimer) clearInterval(_carouselTimer);
-  _carouselTimer = setInterval(function() {
-    var track = document.getElementById('gallery-grid');
-    if (!track) return;
-    var maxScroll = track.scrollWidth - track.clientWidth;
-    if (track.scrollLeft >= maxScroll - 5) {
-      track.scrollTo({ left: 0, behavior: 'smooth' });
-    } else {
-      var cellW = track.querySelector('.gallery-cell');
-      var scrollAmt = cellW ? (cellW.offsetWidth + 8) : 130;
-      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
-    }
-  }, 3000);
-}
-document.addEventListener('DOMContentLoaded', function() {
-  var track = document.getElementById('gallery-grid');
-  if (track) {
-    track.addEventListener('mouseenter', function() { if (_carouselTimer) clearInterval(_carouselTimer); });
-    track.addEventListener('mouseleave', startCarouselAuto);
-    track.addEventListener('touchstart', function() { if (_carouselTimer) clearInterval(_carouselTimer); }, {passive:true});
-    track.addEventListener('touchend', function() { setTimeout(startCarouselAuto, 3000); }, {passive:true});
-  }
-});
-</script>
 <script>
 function showSyncToast() {
   var t = document.getElementById('sync-toast');
@@ -5178,6 +5280,89 @@ function showSyncToast() {
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 3000);
 }
+
+// ── WISHLIST ──
+function getWishlist(){try{return JSON.parse(localStorage.getItem('jj_wishlist')||'[]');}catch(e){return[];}}
+function saveWishlist(w){try{localStorage.setItem('jj_wishlist',JSON.stringify(w));}catch(e){}}
+function isWishlisted(id){return getWishlist().some(function(x){return String(x)===String(id);});}
+function toggleWishlist(id){
+  var w=getWishlist();
+  var idx=w.findIndex(function(x){return String(x)===String(id);});
+  if(idx>-1){w.splice(idx,1);}else{w.push(String(id));}
+  saveWishlist(w);
+  var btn=document.getElementById('heart-'+id);
+  if(btn){btn.textContent=isWishlisted(id)?'♥':'♡';btn.classList.toggle('wishlisted',isWishlisted(id));}
+  updateWishlistBadge();
+}
+function updateWishlistBadge(){
+  var w=getWishlist();
+  var badge=document.getElementById('wishlistBadge');
+  if(badge){badge.textContent=w.length;badge.style.display=w.length>0?'block':'none';}
+}
+function openWishlist(){
+  document.getElementById('wishlistOverlay').classList.add('open');
+  document.getElementById('wishlistDrawer').classList.add('open');
+  document.body.style.overflow='hidden';
+  renderWishlist();
+}
+function closeWishlist(){
+  document.getElementById('wishlistOverlay').classList.remove('open');
+  document.getElementById('wishlistDrawer').classList.remove('open');
+  document.body.style.overflow='';
+}
+function renderWishlist(){
+  var w=getWishlist();
+  var prods=getProducts();
+  var container=document.getElementById('wishlistItems');
+  if(!container)return;
+  if(w.length===0){container.innerHTML='<div class="wishlist-empty">Your wishlist is empty.<br>Tap ♡ on any product to save it!</div>';return;}
+  // Filter out deleted products silently
+  var valid=w.filter(function(id){return prods.find(function(p){return String(p.id)===String(id);});});
+  if(valid.length!==w.length){saveWishlist(valid);}
+  if(valid.length===0){container.innerHTML='<div class="wishlist-empty">Your wishlist is empty.</div>';return;}
+  container.innerHTML=valid.map(function(id){
+    var p=prods.find(function(x){return String(x.id)===String(id);});
+    if(!p)return'';
+    var soldOut=p.available===false;
+    return '<div class="wishlist-item">'+
+      '<img src="'+getImgSrc(p)+'" alt="'+p.name+'"/>'+
+      '<div class="wishlist-item-info">'+
+        '<div class="wishlist-item-name">'+p.name+'</div>'+
+        '<div class="wishlist-item-price">₹'+(p.price||'Contact')+'</div>'+
+        (soldOut?'<div class="wishlist-item-status">Sold Out</div>':
+          '<div class="wishlist-item-actions">'+
+            '<button class="wishlist-item-buy" onclick="closeWishlist();openOrderById(\''+p.id+'\')">Buy Now</button>'+
+          '</div>')+
+      '</div>'+
+      '<button class="wishlist-item-remove" onclick="removeFromWishlist(\''+id+'\')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+function removeFromWishlist(id){
+  var w=getWishlist().filter(function(x){return String(x)!==String(id);});
+  saveWishlist(w);
+  updateWishlistBadge();
+  renderWishlist();
+  var btn=document.getElementById('heart-'+id);
+  if(btn){btn.textContent='♡';btn.classList.remove('wishlisted');}
+}
+
+// ── ASK ON WHATSAPP ──
+function askOnWhatsApp(){
+  var p=window._currentPD;
+  if(!p)return;
+  var msg='Hi, I\'m interested in:\n💛 '+p.name+' (TK-'+String(p.id).padStart(3,'0')+')\nPrice: ₹'+(p.price||'Contact')+'\nhttps://jeswikajewels.com/?product='+p.id+'\nCan you tell me more?';
+  window.open('https://wa.me/919482393897?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ── BACK TO TOP ──
+window.addEventListener('scroll',function(){
+  var btn=document.getElementById('back-to-top');
+  if(btn){btn.classList.toggle('show',window.scrollY>400);}
+});
+
+// Init wishlist badge on load
+document.addEventListener('DOMContentLoaded',function(){updateWishlistBadge();});
 
 function shareProduct(id, name) {
   if (!id) return;
