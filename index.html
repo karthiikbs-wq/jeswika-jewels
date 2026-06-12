@@ -11,41 +11,6 @@
 <meta property="og:url" content="https://jeswikajewels.com">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<!-- Firebase SDK -->
-<script>
-var _carouselTimer = null;
-function scrollCarousel(dir) {
-  var track = document.getElementById('gallery-grid');
-  if (!track) return;
-  var cellW = track.querySelector('.gallery-cell');
-  var scrollAmt = cellW ? (cellW.offsetWidth + 8) * 2 : 260;
-  track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
-}
-function startCarouselAuto() {
-  if (_carouselTimer) clearInterval(_carouselTimer);
-  _carouselTimer = setInterval(function() {
-    var track = document.getElementById('gallery-grid');
-    if (!track) return;
-    var maxScroll = track.scrollWidth - track.clientWidth;
-    if (track.scrollLeft >= maxScroll - 5) {
-      track.scrollTo({ left: 0, behavior: 'smooth' });
-    } else {
-      var cellW = track.querySelector('.gallery-cell');
-      var scrollAmt = cellW ? (cellW.offsetWidth + 8) : 130;
-      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
-    }
-  }, 3000);
-}
-document.addEventListener('DOMContentLoaded', function() {
-  var track = document.getElementById('gallery-grid');
-  if (track) {
-    track.addEventListener('mouseenter', function() { if (_carouselTimer) clearInterval(_carouselTimer); });
-    track.addEventListener('mouseleave', startCarouselAuto);
-    track.addEventListener('touchstart', function() { if (_carouselTimer) clearInterval(_carouselTimer); }, {passive:true});
-    track.addEventListener('touchend', function() { setTimeout(startCarouselAuto, 3000); }, {passive:true});
-  }
-});
-</script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
@@ -5172,6 +5137,40 @@ updateCartBadge();
 <script>document.getElementById('copy-year').textContent = new Date().getFullYear();</script>
 <!-- Sync toast -->
 <div id="sync-toast">✦ Products updated</div>
+<script>
+var _carouselTimer = null;
+function scrollCarousel(dir) {
+  var track = document.getElementById('gallery-grid');
+  if (!track) return;
+  var cellW = track.querySelector('.gallery-cell');
+  var scrollAmt = cellW ? (cellW.offsetWidth + 8) * 2 : 260;
+  track.scrollBy({ left: dir * scrollAmt, behavior: 'smooth' });
+}
+function startCarouselAuto() {
+  if (_carouselTimer) clearInterval(_carouselTimer);
+  _carouselTimer = setInterval(function() {
+    var track = document.getElementById('gallery-grid');
+    if (!track) return;
+    var maxScroll = track.scrollWidth - track.clientWidth;
+    if (track.scrollLeft >= maxScroll - 5) {
+      track.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      var cellW = track.querySelector('.gallery-cell');
+      var scrollAmt = cellW ? (cellW.offsetWidth + 8) : 130;
+      track.scrollBy({ left: scrollAmt, behavior: 'smooth' });
+    }
+  }, 3000);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var track = document.getElementById('gallery-grid');
+  if (track) {
+    track.addEventListener('mouseenter', function() { if (_carouselTimer) clearInterval(_carouselTimer); });
+    track.addEventListener('mouseleave', startCarouselAuto);
+    track.addEventListener('touchstart', function() { if (_carouselTimer) clearInterval(_carouselTimer); }, {passive:true});
+    track.addEventListener('touchend', function() { setTimeout(startCarouselAuto, 3000); }, {passive:true});
+  }
+});
+</script>
 <script>
 function showSyncToast() {
   var t = document.getElementById('sync-toast');
