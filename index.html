@@ -430,9 +430,12 @@ nav{position:sticky;top:0;z-index:200;background:var(--white);border-bottom:1px 
 .prod-price{font-size:16px;color:#DC2626;font-weight:600;}
 .prod-original{font-size:13px;color:var(--text-light);text-decoration:line-through;}
 .prod-discount{font-size:11px;color:#16A34A;font-weight:500;background:#DCFCE7;padding:2px 7px;border-radius:2px;}
-.prod-buy{display:block;background:var(--gold);border:1.5px solid var(--gold);padding:13px;width:100%;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--white);cursor:pointer;font-family:'Jost',sans-serif;transition:background .3s;min-height:46px;box-sizing:border-box;}
+.prod-buy{display:block;background:var(--gold);border:1.5px solid var(--gold);padding:13px;width:100%;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--white);cursor:pointer;font-family:'Jost',sans-serif;transition:background .3s;height:46px;min-height:46px;box-sizing:border-box;}
 .prod-buy:hover{background:var(--gold-light);}
-.prod-buy:disabled{background:#ccc;cursor:not-allowed;}
+.prod-buy:disabled{background:#ccc;border-color:#ccc;cursor:not-allowed;opacity:0.5;}
+.prod-cart{display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;height:46px;min-height:46px;box-sizing:border-box;transition:all .2s;}
+.prod-cart:hover{background:var(--gold);color:white;}
+.prod-cart:disabled{opacity:0.5;cursor:not-allowed;}
 .no-products{text-align:center;padding:60px;color:var(--text-light);font-size:15px;grid-column:1/-1;}
 
 /* HOW TO ORDER */
@@ -3736,7 +3739,7 @@ function renderProducts() {
           ${origNum && origNum>priceNum ? `<span class="prod-original">₹${origNum.toLocaleString('en-IN')}</span>` : ''}
           ${disc>0 ? `<span class="prod-discount">${disc}% off</span>` : ''}
         </div>
-        <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''} style="display:block;width:100%;background:var(--cream);border:1.5px solid var(--gold);color:var(--gold);padding:13px;font-family:'Jost',sans-serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;margin-top:auto;margin-bottom:6px;min-height:46px;box-sizing:border-box;${p.available===false?'opacity:0.5;cursor:not-allowed;':''}">
+        <button class="prod-cart" id="cart-btn-${p.id}" onclick="event.stopPropagation();addToCartById('${p.id}',this)" ${p.available===false?'disabled':''}>
           ${p.available===false?'Sold Out':'🛍 Add to Cart'}
         </button>
         <button class="prod-buy" data-pid="${p.id}" data-avail="${p.available===false?'false':'true'}" onclick="event.stopPropagation();if(this.dataset.avail!=='false'){openOrderById(this.dataset.pid);}" ${p.available===false?'disabled':''}>
@@ -5372,7 +5375,7 @@ updateCartBadge();
   </div>
 </div>
 <!-- BACK TO TOP -->
-<button id="back-to-top" onclick="var s=document.getElementById('shop');if(s){s.scrollIntoView({behavior:'smooth'});}else{window.scrollTo({top:0,behavior:'smooth'});}" title="Back to products">↑</button>
+<button id="back-to-top" onclick="var btn=this;btn.classList.remove('show');window._bttScrolling=true;var s=document.getElementById('shop');if(s){s.scrollIntoView({behavior:'smooth'});}else{window.scrollTo({top:0,behavior:'smooth'});}setTimeout(function(){window._bttScrolling=false;},1000);" title="Back to products">↑</button>
 <!-- Sync toast -->
 <div id="sync-toast">✦ Products updated</div>
 <script>
@@ -5460,7 +5463,7 @@ function askOnWhatsApp(){
 // ── BACK TO TOP ──
 window.addEventListener('scroll',function(){
   var btn=document.getElementById('back-to-top');
-  if(btn){btn.classList.toggle('show',window.scrollY>400);}
+  if(btn && !window._bttScrolling){btn.classList.toggle('show',window.scrollY>800);}
 });
 
 // Init wishlist badge on load
