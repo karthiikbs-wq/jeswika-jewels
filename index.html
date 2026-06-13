@@ -876,6 +876,14 @@ footer{background:#111009;color:rgba(255,255,255,0.5);padding:60px 60px 0;}
 #cart-add-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
 #cart-add-toast .toast-cart-btn{background:var(--gold);color:white;border:none;padding:6px 14px;border-radius:20px;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1px;cursor:pointer;}
 
+/* ── Update Available Banner ── */
+#update-banner{position:fixed;top:0;left:0;right:0;z-index:99999;background:var(--gold);color:white;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 20px;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.5px;box-shadow:0 2px 12px rgba(0,0,0,0.25);transform:translateY(-100%);transition:transform .4s ease;pointer-events:none;}
+#update-banner.show{transform:translateY(0);pointer-events:auto;}
+#update-banner span{flex:1;text-align:center;}
+#update-banner button{background:white;color:var(--gold);border:none;padding:7px 18px;font-family:'Jost',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;cursor:pointer;border-radius:2px;transition:opacity .2s;white-space:nowrap;}
+#update-banner button:hover{opacity:.85;}
+@media(max-width:480px){#update-banner{font-size:12px;padding:10px 12px;gap:10px;}#update-banner button{padding:6px 12px;font-size:11px;}}
+
 </style>
 
 <script>
@@ -5323,6 +5331,35 @@ updateCartBadge();
   </div>
 </div>
 <script>document.getElementById('copy-year').textContent = new Date().getFullYear();</script>
+
+<!-- UPDATE AVAILABLE BANNER -->
+<div id="update-banner">
+  <span>✦ A new version of Jeswika Jewels is available</span>
+  <button onclick="window.location.reload(true)">Refresh Now</button>
+</div>
+
+<!-- SERVICE WORKER REGISTRATION -->
+<script>
+(function() {
+  if (!('serviceWorker' in navigator)) return;
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(reg) {
+      // Check for updates every time page becomes visible (user switching back to tab)
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') reg.update();
+      });
+    }).catch(function(e) { console.warn('SW registration failed:', e); });
+
+    // Listen for SW_UPDATED message from newly activated service worker
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'SW_UPDATED') {
+        var banner = document.getElementById('update-banner');
+        if (banner) banner.classList.add('show');
+      }
+    });
+  });
+})();
+</script>
 <!-- WISHLIST DRAWER -->
 <div class="wishlist-overlay" id="wishlistOverlay" onclick="closeWishlist()"></div>
 <div class="wishlist-drawer" id="wishlistDrawer">
