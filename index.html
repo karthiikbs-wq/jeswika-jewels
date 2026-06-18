@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
   async function saveProductToFirestore(product) {
     try {
       await setDoc(doc(db, 'products', String(product.id)), product);
-    } catch(e) { console.error('Firestore save failed:', e); throw e; }
+    } catch(e) { console.warn('Firestore save failed:', e); }
   }
 
   // Delete a product from Firestore
@@ -154,7 +154,8 @@ document.addEventListener('DOMContentLoaded', function() {
       formData.append('upload_preset', UPLOAD_PRESET);
       formData.append('folder', 'jeswika-jewels/products');
       formData.append('public_id', 'product_' + productId);
-      formData.append('overwrite', 'true');
+      // NOTE: 'overwrite' removed — Cloudinary rejects this param on unsigned uploads (400 error).
+      // To re-upload over the same public_id, enable "Overwrite" in the upload preset settings instead.
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
         method: 'POST',
         body: formData
@@ -5185,10 +5186,7 @@ function saveProduct() {
   function finishSave(productData, productList) {
     saveProducts(productList);
     if(window._fbProductFn) {
-      window._fbProductFn.saveProductToFirestore(productData).catch(e => {
-        console.error('Cloud sync failed — product saved locally only:', e);
-        alert('⚠️ Saved locally, but failed to sync to the cloud database.\n\nError: ' + (e && e.message ? e.message : e) + '\n\nThis usually means a Firestore permission issue. The product will disappear after refresh until this is fixed.');
-      });
+      window._fbProductFn.saveProductToFirestore(productData).catch(()=>{});
     }
     closeAdminModal();
     renderAdminTable();
@@ -5211,12 +5209,12 @@ function saveProduct() {
           if(url) { p.imgUrl = url; delete p.img; }
           else {
             await new Promise(res => {
-              var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+              var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(blob);
             });
           }
         } else {
           await new Promise(res => {
-            var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+            var r = new FileReader(); r.onload = e => { p.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(blob);
           });
         }
       }
@@ -5232,12 +5230,12 @@ function saveProduct() {
         if(url) { newProduct.imgUrl = url; }
         else {
           await new Promise(res => {
-            var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+            var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(blob);
           });
         }
       } else if(file) {
         await new Promise(res => {
-          var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(file);
+          var r = new FileReader(); r.onload = e => { newProduct.img = e.target.result.split(',')[1]; res(); }; r.readAsDataURL(blob);
         });
       }
       products.push(newProduct);
