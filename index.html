@@ -255,6 +255,22 @@ function loadRazorpay(callback) {
   s.onerror = function(){ alert('Could not load payment gateway. Please check your internet connection and try again.'); };
   document.head.appendChild(s);
 }
+
+// ── Server-verified order creation (prevents client-side price tampering) ──
+// Replace with your deployed Cloud Function URL after deploying.
+const CREATE_ORDER_URL = 'https://createrazorpayorder-REPLACE-ME.a.run.app';
+
+async function createServerOrder(items, pincode) {
+  const res = await fetch(CREATE_ORDER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items: items, pincode: pincode })
+  });
+  const data = await res.json();
+  if(!res.ok) { throw new Error(data && data.error ? data.error : 'Order creation failed.'); }
+  return data;
+}
+
 </script>
 <!-- Microsoft Clarity Analytics -->
 <script type="text/javascript">
@@ -3998,7 +4014,7 @@ function openProductDetail(pid){
   if(wb){ var w=isWishlisted(p.id); wb.textContent=w?'♥':'♡'; wb.classList.toggle('wishlisted',w); }
   var wbd = document.getElementById('pdWishBtnDesktop');
   if(wbd){ var wd=isWishlisted(p.id); wbd.textContent=wd?'♥':'♡'; wbd.classList.toggle('wishlisted',wd); }
-  var pdImages = getImgArray(p, 900);
+  var pdImages = getImgArray(p, 1500);
   // Render the swipeable photo gallery (mobile + desktop)
   renderPDGallery(pdImages, 'Mobile');
   renderPDGallery(pdImages, 'Desktop');
@@ -4293,6 +4309,8 @@ function removeFromCart(idx){
 
 function checkoutCart(){
   if(cart.length===0) return;
+  window._checkoutItems = cart.map(function(item){ return String(item.id); });
+  window._paymentVerified = undefined;
   // Build a combined product: use first item for product detail, total for all
   var total = 0;
   var names = [];
@@ -4326,6 +4344,8 @@ function openOrderById(pid) {
   const products = getProducts();
   const p = products.find(x => String(x.id) === String(pid));
   if (!p || p.available===false) return;
+  window._checkoutItems = [String(p.id)];
+  window._paymentVerified = undefined;
   const priceNum = p.price ? parseFloat(p.price) : 0;
   const displayPrice = priceNum ? '₹'+priceNum.toLocaleString('en-IN') : 'Contact for Price';
   currentProduct = p.name;
@@ -4494,6 +4514,7 @@ function confirmRetryUTR() {
     return;
   }
   // Copy UTR to main form and submit
+  window._paymentVerified = false;
   document.getElementById('cust-utr').value = val;
   document.getElementById('payment-retry-sheet').remove();
   submitOrder();
@@ -4843,6 +4864,7 @@ function launchRazorpay() {
       },
       theme: { color: '#B8860B' },
       handler: function(response) {
+        window._paymentVerified = true;
         document.getElementById('cust-utr').value = response.razorpay_payment_id;
         submitOrder();
       },
@@ -4864,6 +4886,7 @@ function launchRazorpay() {
 function submitOrder() {
   const utr = document.getElementById('cust-utr').value.trim();
   // UTR is now filled automatically by Razorpay payment ID - no manual validation needed
+  const isVerified = window._paymentVerified === true; // true = real Razorpay payment; false/undefined = self-reported manual UPI UTR, NOT verified
 
   const name=document.getElementById('cust-name').value.trim();
   const phone=document.getElementById('cust-phone').value.trim();
@@ -4876,26 +4899,33 @@ function submitOrder() {
 
   document.getElementById('order-id-display').textContent='Order #'+orderId;
 
-  // Direct deep-link to this payment in the Razorpay dashboard (opens once you're logged in)
+  // Direct deep-link to this payment in the Razorpay dashboard (opens once you're logged in) — only meaningful for real Razorpay payments
   const verifyLink = 'https://dashboard.razorpay.com/app/payments/' + utr;
 
   // Owner WhatsApp notification
   const ownerMsg=encodeURIComponent(
-    '🔔 *NEW ORDER — Jeswika Jewels*\n\n'+
+    (isVerified ? '🔔 *NEW ORDER — Jeswika Jewels*\n\n' : '⚠️🔔 *NEW ORDER (UNVERIFIED PAYMENT) — Jeswika Jewels*\n\n')+
     '📋 Order ID: #'+orderId+'\n'+
     '🕐 Time: '+now+'\n\n'+
     '🛍 *Product:* '+currentProduct+'\n'+
     '💰 Product Price: '+currentPrice+'\n'+
     '🚚 Shipping: ₹'+currentShipping+'\n'+
     '💳 *Total Paid: ₹'+total+'*\n'+
-    '📌 Razorpay Payment ID: '+utr+'\n'+
-    '  Paid to: jeswikajewels@axl\n\n'+
+    (isVerified ?
+      '📌 Razorpay Payment ID: '+utr+'\n  Paid to: jeswikajewels@axl\n\n'
+      :
+      '📌 Customer-entered UTR: '+utr+'\n  Claimed paid to: jeswikajewels@axl\n\n'
+    )+
     '👤 *Customer Details*\n'+
     '• Name: '+name+'\n'+
     '• Phone: '+phone+'\n'+
     '• Address: '+address+'\n'+
     '• City: '+city+' - '+pin+'\n\n'+
-    '✅ Please verify payment and confirm dispatch!'
+    (isVerified ?
+      '✅ Please verify payment and confirm dispatch!'
+      :
+      '⚠️ NOT VERIFIED — this customer paid manually via UPI and self-reported the UTR. CHECK YOUR BANK/UPI APP for this UTR and amount BEFORE dispatching!'
+    )
   );
 
   // Customer WhatsApp message
@@ -4934,13 +4964,13 @@ function submitOrder() {
   };
 
   // EmailJS — use message_html as single param (works with any template)
-  const emailBody = `🔔 NEW ORDER — Jeswika Jewels\n\nOrder ID: #${orderId}\nTime: ${now}\n\nProduct: ${currentProduct}\nPrice: ${currentPrice}\nShipping: ${currentShipping === 0 ? 'FREE' : '₹'+currentShipping}\nTotal Paid: ₹${total}\nUTR: ${utr}\n\nCustomer Details:\nName: ${name}\nPhone: ${phone}\nAddress: ${address}, ${city} - ${pin}`;
+  const emailBody = (isVerified ? `🔔 NEW ORDER` : `⚠️ NEW ORDER (UNVERIFIED PAYMENT — check your bank/UPI app before dispatch)`) + ` — Jeswika Jewels\n\nOrder ID: #${orderId}\nTime: ${now}\n\nProduct: ${currentProduct}\nPrice: ${currentPrice}\nShipping: ${currentShipping === 0 ? 'FREE' : '₹'+currentShipping}\nTotal Paid: ₹${total}\n${isVerified ? 'Razorpay Payment ID' : 'Customer-entered UTR (NOT verified)'}: ${utr}\n\nCustomer Details:\nName: ${name}\nPhone: ${phone}\nAddress: ${address}, ${city} - ${pin}`;
 
   emailjs.send('service_tlmhzwd', 'template_5130avh', {
     to_email: 'jeswika.jewels@gmail.com',
     from_name: 'Jeswika Jewels Orders',
     reply_to: 'jeswika.jewels@gmail.com',
-    subject: '🛒 New Order #' + orderId + ' — ' + currentProduct,
+    subject: (isVerified ? '🛒 New Order #' : '⚠️ UNVERIFIED Order #') + orderId + ' — ' + currentProduct,
     message: emailBody,
     // Also send individual fields in case template uses them
     order_id: orderId,
@@ -4960,19 +4990,21 @@ function submitOrder() {
   // Telegram — use no-cors GET request to avoid CORS block
   // Encode message as URL param so no preflight is needed
   const tgMsg = encodeURIComponent(
-    '\uD83D\uDD14 NEW ORDER \u2014 Jeswika Jewels\n\n'
+    (isVerified ? '\uD83D\uDD14 NEW ORDER \u2014 Jeswika Jewels\n\n' : '\u26A0\uFE0F\uD83D\uDD14 NEW ORDER (UNVERIFIED PAYMENT) \u2014 Jeswika Jewels\n\n')
     + '\uD83D\uDCCB Order: #' + orderId + '\n'
     + '\uD83D\uDD50 Time: ' + now + '\n\n'
     + '\uD83D\uDED2 Product: ' + currentProduct + '\n'
     + '\uD83D\uDCB0 Price: ' + currentPrice + '\n'
     + '\uD83D\uDE9A Shipping: ' + (currentShipping === 0 ? 'FREE' : '\u20B9' + currentShipping) + '\n'
     + '\uD83D\uDCB3 Total Paid: \u20B9' + total + '\n'
-    + '\uD83D\uDCCC Payment ID: ' + utr + '\n\n'
+    + (isVerified ? '\uD83D\uDCCC Payment ID: ' + utr + '\n\n' : '\uD83D\uDCCC Customer-entered UTR: ' + utr + '\n\n')
     + '\uD83D\uDC64 Customer\n'
     + '\u2022 Name: ' + name + '\n'
     + '\u2022 Phone: ' + phone + '\n'
     + '\u2022 Address: ' + address + ', ' + city + ' - ' + pin + '\n\n'
-    + '<a href="' + verifyLink + '">\uD83D\uDD0E Verify this payment on Razorpay</a>'
+    + (isVerified
+        ? '<a href="' + verifyLink + '">\uD83D\uDD0E Verify this payment on Razorpay</a>'
+        : '\u26A0\uFE0F NOT VERIFIED \u2014 paid manually via UPI, UTR self-reported by customer. CHECK YOUR BANK/UPI APP for this UTR + amount before dispatching!')
   );
   // Telegram notification — direct API call
   const BOT_TOKEN = '8710053797:AAGrHXUY4RzKq4AWqVcJ_qAbYkEnO1opjUI';
@@ -5268,7 +5300,7 @@ function previewAdminImg(slot) {
   if(!file) return;
   // Clear URL field when file is chosen
   document.getElementById('ap-image-url-' + slot).value = '';
-  compressImage(file, 800, 0.82, function(blob) {
+  compressImage(file, 1600, 0.92, function(blob) {
     var prev = document.getElementById('ap-img-preview-' + slot);
     prev.src = URL.createObjectURL(blob);
     prev.style.display = 'block';
@@ -5303,7 +5335,7 @@ async function resolveSlotImage(slot, existingImages) {
   const file = document.getElementById('ap-image-' + slot).files[0];
   if(file) {
     return await new Promise(function(res){
-      compressImage(file, 800, 0.82, function(blob){ res({ type: 'blob', value: blob }); });
+      compressImage(file, 1600, 0.92, function(blob){ res({ type: 'blob', value: blob }); });
     });
   }
   if(existingImages && existingImages[slot - 1]) return { type: 'keep', value: existingImages[slot - 1] };
