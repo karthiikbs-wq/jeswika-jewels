@@ -145,6 +145,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // ── Cloudinary image upload helpers ──
   // Upload image blob to Cloudinary, return secure URL
+  //
+  // IMPORTANT: the public_id includes a timestamp so every upload creates a
+  // brand-new asset. We used to reuse a fixed public_id (product_<id>_<slot>)
+  // and rely on Cloudinary's "Overwrite" preset setting to replace it — but
+  // that setting is easy to miss/forget, and when it's off, Cloudinary just
+  // silently returns the EXISTING old asset's URL instead of erroring, which
+  // is exactly why "replace photo" looked like it wasn't doing anything.
+  // Using a unique public_id every time sidesteps that setting entirely.
+  // The tradeoff: old versions become orphaned assets on Cloudinary instead
+  // of being overwritten — that's what the `tags` param + deleteProductImage
+  // below (tag-based bulk delete) cleans up.
   async function uploadProductImage(productId, blob, slot) {
     try {
       const CLOUD_NAME = 'ddgpbmhqa';
@@ -153,9 +164,8 @@ document.addEventListener('DOMContentLoaded', function() {
       formData.append('file', blob);
       formData.append('upload_preset', UPLOAD_PRESET);
       formData.append('folder', 'jeswika-jewels/products');
-      formData.append('public_id', 'product_' + productId + (slot ? ('_' + slot) : ''));
-      // NOTE: 'overwrite' removed — Cloudinary rejects this param on unsigned uploads (400 error).
-      // To re-upload over the same public_id, enable "Overwrite" in the upload preset settings instead.
+      formData.append('public_id', 'product_' + productId + (slot ? ('_' + slot) : '') + '_' + Date.now());
+      formData.append('tags', 'product_' + productId);
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
         method: 'POST',
         body: formData
@@ -170,8 +180,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Delete image from Cloudinary via a small Cloudflare Worker that holds the
-  // API secret and performs a *signed* deletion (Cloudinary doesn't support
+  // Delete ALL Cloudinary images for a product (every version ever uploaded
+  // for it, since each "replace photo" now creates a new asset rather than
+  // overwriting) via a small Cloudflare Worker that holds the API secret and
+  // performs a *signed* bulk-delete-by-tag (Cloudinary doesn't support
   // unsigned deletes). See cf-worker/cloudinary-delete-worker.js.
   // Until that Worker is deployed, this fails silently — exactly like
   // createServerOrder() does for the same reason — so deletion just won't
@@ -183,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const res = await fetch(DELETE_IMAGE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': DELETE_IMAGE_SECRET },
-        body: JSON.stringify({ productId: productId, slots: [1, 2, 3] })
+        body: JSON.stringify({ productId: productId })
       });
       if(!res.ok) console.warn('Cloudinary delete failed:', await res.text());
     } catch(e) {
@@ -3695,16 +3707,19 @@ var qrcode = function() {
           <div style="flex:1;min-width:130px;">
             <input type="file" id="ap-image-1" accept="image/*" onchange="previewAdminImg(1)"/>
             <img id="ap-img-preview-1" class="img-preview" alt="Preview 1"/>
+            <button type="button" id="ap-img-delete-1" onclick="removeSlotImage(1)" style="display:none;width:100%;margin-top:4px;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:5px;font-size:11px;border-radius:4px;cursor:pointer;">🗑 Remove photo</button>
             <input type="text" id="ap-image-url-1" placeholder="or paste image URL" style="font-size:11px;margin-top:4px;width:100%;box-sizing:border-box;" oninput="previewAdminImgUrl(1)"/>
           </div>
           <div style="flex:1;min-width:130px;">
             <input type="file" id="ap-image-2" accept="image/*" onchange="previewAdminImg(2)"/>
             <img id="ap-img-preview-2" class="img-preview" alt="Preview 2"/>
+            <button type="button" id="ap-img-delete-2" onclick="removeSlotImage(2)" style="display:none;width:100%;margin-top:4px;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:5px;font-size:11px;border-radius:4px;cursor:pointer;">🗑 Remove photo</button>
             <input type="text" id="ap-image-url-2" placeholder="or paste image URL" style="font-size:11px;margin-top:4px;width:100%;box-sizing:border-box;" oninput="previewAdminImgUrl(2)"/>
           </div>
           <div style="flex:1;min-width:130px;">
             <input type="file" id="ap-image-3" accept="image/*" onchange="previewAdminImg(3)"/>
             <img id="ap-img-preview-3" class="img-preview" alt="Preview 3"/>
+            <button type="button" id="ap-img-delete-3" onclick="removeSlotImage(3)" style="display:none;width:100%;margin-top:4px;background:#FEF2F2;border:1px solid #FECACA;color:#DC2626;padding:5px;font-size:11px;border-radius:4px;cursor:pointer;">🗑 Remove photo</button>
             <input type="text" id="ap-image-url-3" placeholder="or paste image URL" style="font-size:11px;margin-top:4px;width:100%;box-sizing:border-box;" oninput="previewAdminImgUrl(3)"/>
           </div>
         </div>
@@ -5296,6 +5311,7 @@ function noteIdUsed(id) {
 function openAddProduct(){
   editingId=null;
   window._pendingImgBlobs = {};
+  window._removedSlots = {};
   document.getElementById('admin-modal-title').textContent='Add New Product';
   ['ap-name','ap-price','ap-original','ap-badge'].forEach(id=>document.getElementById(id).value='');
   populateCategoryDropdown();
@@ -5305,6 +5321,7 @@ function openAddProduct(){
   [1,2,3].forEach(function(slot){
     document.getElementById('ap-image-'+slot).value='';
     document.getElementById('ap-img-preview-'+slot).style.display='none';
+    document.getElementById('ap-img-delete-'+slot).style.display='none';
     document.getElementById('ap-image-url-'+slot).value='';
   });
   // Auto-suggest next position and next ID (both editable)
@@ -5317,6 +5334,7 @@ function openAddProduct(){
 function editProduct(id){
   const p=getProducts().find(x=>x.id===id);if(!p)return;editingId=id;
   window._pendingImgBlobs = {};
+  window._removedSlots = {};
   document.getElementById('admin-modal-title').textContent='Edit Product';
   document.getElementById('ap-name').value=p.name;
   document.getElementById('ap-id').value=p.id;
@@ -5333,9 +5351,10 @@ function editProduct(id){
     document.getElementById('ap-image-'+slot).value='';
     document.getElementById('ap-image-url-'+slot).value='';
     const prev = document.getElementById('ap-img-preview-'+slot);
+    const delBtn = document.getElementById('ap-img-delete-'+slot);
     const existing = existingImages[slot-1];
-    if(existing){ prev.src = existing; prev.style.display='block'; }
-    else { prev.src=''; prev.style.display='none'; }
+    if(existing){ prev.src = existing; prev.style.display='block'; delBtn.style.display='block'; }
+    else { prev.src=''; prev.style.display='none'; delBtn.style.display='none'; }
   });
   document.getElementById('adminProductModal').classList.add('active');
 }
@@ -5365,10 +5384,13 @@ function previewAdminImg(slot) {
   if(!file) return;
   // Clear URL field when file is chosen
   document.getElementById('ap-image-url-' + slot).value = '';
+  if(window._removedSlots) window._removedSlots[slot] = false;
   compressImage(file, 1600, 0.92, function(blob) {
     var prev = document.getElementById('ap-img-preview-' + slot);
     prev.src = URL.createObjectURL(blob);
     prev.style.display = 'block';
+    var delBtn = document.getElementById('ap-img-delete-' + slot);
+    if(delBtn) delBtn.style.display = 'block';
     // Store compressed blob for upload
     if(!window._pendingImgBlobs) window._pendingImgBlobs = {};
     window._pendingImgBlobs[slot] = blob;
@@ -5378,20 +5400,41 @@ function previewAdminImg(slot) {
 function previewAdminImgUrl(slot) {
   const url = document.getElementById('ap-image-url-' + slot).value.trim();
   const prev = document.getElementById('ap-img-preview-' + slot);
+  const delBtn = document.getElementById('ap-img-delete-' + slot);
   if(url) {
     // Clear file input when URL is typed
     document.getElementById('ap-image-' + slot).value = '';
     if(window._pendingImgBlobs) delete window._pendingImgBlobs[slot];
+    if(window._removedSlots) window._removedSlots[slot] = false;
     prev.src = url;
     prev.style.display = 'block';
+    if(delBtn) delBtn.style.display = 'block';
     prev.onerror = function(){ prev.style.display='none'; };
   } else {
     prev.style.display = 'none';
+    if(delBtn) delBtn.style.display = 'none';
   }
 }
 
+// Remove the photo in this slot — clears any chosen file/URL/preview and,
+// when editing an existing product, marks the slot so its existing photo
+// is actually dropped on save rather than silently kept (which is what
+// used to happen if you just cleared the inputs without this).
+function removeSlotImage(slot) {
+  if(!window._removedSlots) window._removedSlots = {};
+  window._removedSlots[slot] = true;
+  if(window._pendingImgBlobs) delete window._pendingImgBlobs[slot];
+  document.getElementById('ap-image-' + slot).value = '';
+  document.getElementById('ap-image-url-' + slot).value = '';
+  const prev = document.getElementById('ap-img-preview-' + slot);
+  prev.src = '';
+  prev.style.display = 'none';
+  document.getElementById('ap-img-delete-' + slot).style.display = 'none';
+}
+
 // Resolve what image (if any) should be used for a given slot on save.
-// Priority: pasted URL > newly chosen file (compressed blob) > existing image at this slot (when editing) > nothing.
+// Priority: pasted URL > newly chosen file (compressed blob) > explicitly
+// removed (nothing) > existing image at this slot (when editing) > nothing.
 async function resolveSlotImage(slot, existingImages) {
   const manualUrl = document.getElementById('ap-image-url-' + slot).value.trim();
   if(manualUrl) return { type: 'url', value: manualUrl };
@@ -5403,6 +5446,7 @@ async function resolveSlotImage(slot, existingImages) {
       compressImage(file, 1600, 0.92, function(blob){ res({ type: 'blob', value: blob }); });
     });
   }
+  if(window._removedSlots && window._removedSlots[slot]) return null;
   if(existingImages && existingImages[slot - 1]) return { type: 'keep', value: existingImages[slot - 1] };
   return null;
 }
@@ -5450,7 +5494,7 @@ async function saveProduct() {
   const slot2 = await resolveSlotImage(2, existingImages);
   const slot3 = await resolveSlotImage(3, existingImages);
 
-  if(editingId === null && !slot1) { alert('Please upload at least one product photo.'); resetBtn(); return; }
+  if(!slot1 && !slot2 && !slot3) { alert('Please keep or upload at least one product photo.'); resetBtn(); return; }
 
   // ── Upload any new blobs to Cloudinary (or fall back to base64) ──
   const slots = [slot1, slot2, slot3];

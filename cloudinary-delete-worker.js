@@ -19,11 +19,16 @@
  *      (see the X-Admin-Secret header below).
  *
  * Request shape (POST, JSON body):
- *   { "productId": 21, "slots": [1, 2, 3] }
+ *   { "productId": 21 }
  *
- * This deletes product_21_1, product_21_2, product_21_3 from Cloudinary
- * (silently skips any that don't exist — Cloudinary's destroy API returns
- * "not found" rather than erroring, which is fine here).
+ * Why tag-based, not public_id-based: every photo upload in index.html now
+ * gets a unique, timestamped public_id (product_<id>_<slot>_<timestamp>) —
+ * this is what makes "replace photo" reliably work without depending on
+ * Cloudinary's "Overwrite" preset setting. That means this Worker can't
+ * just guess the exact public_id to delete anymore. Instead, every upload
+ * is also tagged with `product_<id>`, and this Worker deletes everything
+ * under that tag in one call — every version ever uploaded for that
+ * product, regardless of how many times its photos were replaced.
  *
  * NOTE on auth: ADMIN_SHARED_SECRET is a pragmatic stopgap, not real auth —
  * anyone with devtools open on the admin panel can read it from the request.
@@ -33,7 +38,6 @@
  */
 
 const CLOUD_NAME = 'ddgpbmhqa';
-const FOLDER = 'jeswika-jewels/products';
 
 export default {
   async fetch(request, env) {
@@ -58,47 +62,36 @@ export default {
     }
 
     const productId = body.productId;
-    const slots = Array.isArray(body.slots) && body.slots.length ? body.slots : [1, 2, 3];
-
     if (productId === undefined || productId === null) {
       return json({ error: 'productId is required' }, 400);
     }
 
-    const results = [];
-    for (const slot of slots) {
-      const publicId = `${FOLDER}/product_${productId}_${slot}`;
-      try {
-        const result = await destroyCloudinaryAsset(publicId, env);
-        results.push({ slot, publicId, result });
-      } catch (e) {
-        results.push({ slot, publicId, error: String(e) });
-      }
+    try {
+      const result = await deleteByTag(`product_${productId}`, env);
+      return json({ productId, result });
+    } catch (e) {
+      return json({ productId, error: String(e) }, 500);
     }
-
-    return json({ productId, results });
   },
 };
 
-async function destroyCloudinaryAsset(publicId, env) {
+async function deleteByTag(tag, env) {
   const timestamp = Math.floor(Date.now() / 1000);
-  // Cloudinary signature = sha1("param1=value1&param2=value2..." + api_secret)
-  // Params must be sorted alphabetically by key (public_id, then timestamp).
-  const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}`;
+  // Cloudinary signature = sha1("param1=value1&param2=value2..." + api_secret),
+  // params sorted alphabetically by key (tag, then timestamp).
+  const paramsToSign = `tag=${tag}&timestamp=${timestamp}`;
   const signature = await sha1Hex(paramsToSign + env.CLOUDINARY_API_SECRET);
 
   const formData = new FormData();
-  formData.append('public_id', publicId);
   formData.append('timestamp', String(timestamp));
   formData.append('api_key', env.CLOUDINARY_API_KEY);
   formData.append('signature', signature);
 
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/destroy`, {
-    method: 'POST',
-    body: formData,
-  });
-  const data = await res.json();
-  // Cloudinary returns { result: "ok" } or { result: "not found" }
-  return data;
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/tags/${encodeURIComponent(tag)}`,
+    { method: 'DELETE', body: formData }
+  );
+  return await res.json();
 }
 
 async function sha1Hex(str) {
