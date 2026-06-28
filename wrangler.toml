@@ -1,0 +1,8 @@
+name = "jeswika-cloudinary-delete"
+main = "cloudinary-delete-worker.js"
+compatibility_date = "2024-01-01"
+
+# Secrets (set via `wrangler secret put <NAME>`, never committed here):
+#   CLOUDINARY_API_KEY
+#   CLOUDINARY_API_SECRET
+#   ADMIN_SHARED_SECRET

@@ -170,9 +170,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Delete image from Cloudinary (via Firestore-stored public_id)
+  // Delete image from Cloudinary via a small Cloudflare Worker that holds the
+  // API secret and performs a *signed* deletion (Cloudinary doesn't support
+  // unsigned deletes). See cf-worker/cloudinary-delete-worker.js.
+  // Until that Worker is deployed, this fails silently — exactly like
+  // createServerOrder() does for the same reason — so deletion just won't
+  // clean up Cloudinary yet, but it also won't break the UI.
+  const DELETE_IMAGE_URL = 'https://jeswika-cloudinary-delete.REPLACE-ME.workers.dev';
+  const DELETE_IMAGE_SECRET = 'REPLACE-ME-SAME-VALUE-AS-ADMIN_SHARED_SECRET';
   async function deleteProductImage(productId) {
-    console.log('Image delete skipped (client-side Cloudinary deletion requires server)');
+    try {
+      const res = await fetch(DELETE_IMAGE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Secret': DELETE_IMAGE_SECRET },
+        body: JSON.stringify({ productId: productId, slots: [1, 2, 3] })
+      });
+      if(!res.ok) console.warn('Cloudinary delete failed:', await res.text());
+    } catch(e) {
+      console.warn('Cloudinary delete skipped (Worker not reachable):', e);
+    }
   }
 
   window._fbStorageFn = {
@@ -4525,6 +4541,9 @@ window.addEventListener('popstate', function(e) {
   var modal = document.getElementById('orderModal');
   var isOpen = modal && modal.classList.contains('active');
   if(!isOpen) return;
+  // We're handling this back-press ourselves (closing/managing the order
+  // modal) — don't let the site-wide "leave page?" confirm below also fire.
+  e.stopImmediatePropagation();
 
   var activePanel = document.querySelector('.step-panel.active');
   var step = activePanel ? parseInt(activePanel.id.replace('panel-','')) : 1;
@@ -4553,6 +4572,33 @@ window.addEventListener('popstate', function(e) {
     document.body.style.overflow = '';
   }
 });
+
+// ── Confirm before leaving the site via back button (phone/browser) ──
+// Works everywhere: homepage, admin panel, anywhere — because the admin
+// panel and other views here are just shown/hidden with CSS (no history
+// entries of their own), this single guard catches every "back" press that
+// isn't already handled by the order-modal logic above.
+(function() {
+  function pushExitGuard() {
+    try { history.pushState({exitGuard: true}, '', window.location.href); } catch(e) {}
+  }
+  // Seed one guard entry on load so the very first back press is catchable.
+  pushExitGuard();
+
+  window.addEventListener('popstate', function() {
+    // If the order modal handled this pop, it already called
+    // stopImmediatePropagation() above and we won't even get here.
+    var leave = confirm('Do you want to go back?');
+    if (leave) {
+      // Let them actually leave — undo the guard step we consumed, then
+      // continue back to wherever they actually came from.
+      try { history.go(-1); } catch(e) {}
+    } else {
+      // Stay — re-arm the guard so the next back press prompts again.
+      pushExitGuard();
+    }
+  });
+})();
 
 function showOrderReminder() {
   var existing = document.getElementById('order-reminder-toast');
@@ -5225,8 +5271,28 @@ function renderAdminTable(){
   }).join('');
 }
 function toggleAvail(id){const p=getProducts();const x=p.find(i=>i.id===id);if(x){x.available=x.available===false;saveProducts(p);if(window._fbProductFn)window._fbProductFn.saveProductToFirestore(x).catch(()=>{});renderAdminTable();updateStats();renderProducts();}}
-function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=getProducts().filter(x=>x.id!==id);saveProducts(p);if(window._fbProductFn)window._fbProductFn.deleteProductFromFirestore(id).catch(()=>{});renderAdminTable();updateStats();renderProducts();}
+function deleteProduct(id){if(!confirm('Delete this product?'))return;const p=getProducts().filter(x=>x.id!==id);saveProducts(p);if(window._fbProductFn)window._fbProductFn.deleteProductFromFirestore(id).catch(()=>{});if(window._fbStorageFn)window._fbStorageFn.deleteProductImage(id).catch(()=>{});renderAdminTable();updateStats();renderProducts();}
 let editingId=null;
+
+// ── Monotonic "highest ID ever used" counter ──
+// This is intentionally NOT derived from getProducts()/localStorage on the fly,
+// because that cache can be briefly stale (overwritten by the Firestore
+// onSnapshot listener or the 30s poll right after a save). A separate
+// always-increasing counter means the next suggested ID can never collide
+// with one that was *just* assigned, even if the product list hasn't
+// caught up yet. See bug writeup: ID collisions caused a new product to
+// silently overwrite an existing one's Firestore doc + Cloudinary photos.
+function getMaxIdEverUsed() {
+  const stored = parseInt(localStorage.getItem('jj_max_id') || '0', 10);
+  const products = getProducts();
+  const fromProducts = products.reduce((m, p) => Math.max(m, p.id || 0), 0);
+  return Math.max(20, stored, fromProducts);
+}
+function noteIdUsed(id) {
+  const current = parseInt(localStorage.getItem('jj_max_id') || '0', 10);
+  if (id > current) localStorage.setItem('jj_max_id', String(id));
+}
+
 function openAddProduct(){
   editingId=null;
   window._pendingImgBlobs = {};
@@ -5245,8 +5311,7 @@ function openAddProduct(){
   const products = getProducts();
   const maxPos = products.reduce((m,p)=>Math.max(m, p.position||0), 0);
   document.getElementById('ap-position').value = maxPos + 1;
-  const nextId = Math.max(20, ...products.map(x=>x.id)) + 1;
-  document.getElementById('ap-id').value = nextId;
+  document.getElementById('ap-id').value = getMaxIdEverUsed() + 1;
   document.getElementById('adminProductModal').classList.add('active');
 }
 function editProduct(id){
@@ -5371,11 +5436,14 @@ async function saveProduct() {
   } else if(editingId !== null) {
     finalId = editingId;
   } else {
-    finalId = Math.max(20, ...products.map(x => x.id)) + 1;
+    finalId = getMaxIdEverUsed() + 1;
   }
   if(isNaN(finalId) || finalId < 1) { alert('Product ID must be a valid number.'); resetBtn(); return; }
   const dupe = products.find(x => x.id === finalId && x.id !== editingId);
   if(dupe) { alert('Product ID TK-' + String(finalId).padStart(3,'0') + ' is already used by "' + dupe.name + '". Please choose a different ID.'); resetBtn(); return; }
+  // Reserve this ID immediately so a second "Add New Product" opened before
+  // this save's Firestore write settles can never suggest/accept the same ID.
+  noteIdUsed(finalId);
 
   // ── Resolve each of the 3 photo slots (new file/URL, or kept existing) ──
   const slot1 = await resolveSlotImage(1, existingImages);
@@ -5436,7 +5504,7 @@ async function saveProduct() {
   saveProducts(products);
   if(window._fbProductFn) {
     if(idChanged) { window._fbProductFn.deleteProductFromFirestore(editingId).catch(()=>{}); }
-    window._fbProductFn.saveProductToFirestore(productData).catch(()=>{});
+    try { await window._fbProductFn.saveProductToFirestore(productData); } catch(e) { console.warn('Firestore save failed:', e); }
   }
   closeAdminModal();
   renderAdminTable();
